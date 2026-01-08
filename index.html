@@ -38,23 +38,33 @@
     // ⚠️⚠️ 請在此填入您的 LIFF ID ⚠️⚠️
     const LIFF_ID = '2008843970-PeS3Eu6o'; 
 
-    // 1. 解析網址中的資料 (Data from Hash)
+    // 1. 解析網址中的資料 (Data from Hash) - 修正中文亂碼版
     function loadDataFromUrl() {
       try {
         const hash = window.location.hash.substring(1); // 取得 # 後面的字串
         if (!hash) return [];
-        
+    
         // 處理 Base64 WebSafe 字元替換 (-_ 轉為 +/)
         let base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
         // 補齊 padding (=)
         while (base64.length % 4) { base64 += '='; }
 
-        // 解碼：Base64 -> UTF-8 String -> JSON
-        const jsonString = decodeURIComponent(escape(window.atob(base64)));
+        // ===== 關鍵修正開始 =====
+        // 1. 將 Base64 解碼為二進位字串
+        const binaryString = window.atob(base64);
+        // 2. 將二進位字串轉換為位元組陣列 (Uint8Array)
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        // 3. 使用 TextDecoder 將位元組陣列正確解碼為 UTF-8 中文字串
+        const jsonString = new TextDecoder('utf-8').decode(bytes);
+        // ===== 關鍵修正結束 =====
+
         return JSON.parse(jsonString);
       } catch (e) {
         console.error(e);
-        alert("資料讀取錯誤：" + e.message);
+        // alert("資料讀取錯誤：" + e.message); // 建議註解掉 alert，避免干擾體驗
         return [];
       }
     }
