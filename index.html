@@ -84,33 +84,50 @@
     }
 
     // 2. 渲染列表
+    // 2. 渲染列表 (優化版：固定第一列為店名)
     function renderList(items) {
       document.getElementById('loading').style.display = 'none';
       const list = document.getElementById('menuList');
       const btn = document.getElementById('submitBtn');
       
-      if (!items || items.length === 0) {
-        list.innerHTML = "沒有資料";
-        return;
-      }
-      
+      if (!items) items = [];
       window.menuItems = items; // 存入全域變數
       btn.style.display = 'block';
       
       let html = "";
+
+      // 💡 步驟 1：固定產生第一列「餐廳名稱」
+      html += `
+        <div class="d-flex align-items-center mb-3 p-2 bg-light rounded border-primary border" style="border-width: 2px !important;">
+          <div class="flex-grow-1">
+            <label class="small text-primary fw-bold">🏠 餐廳名稱</label>
+            <input type="text" class="form-control form-control-sm border-0 fw-bold text-primary" 
+                   value="請輸入店家名稱" id="storeNameInput" onfocus="if(this.value=='請輸入店家名稱')this.value=''">
+          </div>
+          <div class="d-flex flex-column align-items-center ms-2">
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" checked disabled title="店名必須勾選">
+            </div>
+            <div class="form-check">
+              <input type="radio" name="store" class="form-check-input" checked disabled>
+            </div>
+          </div>
+        </div>
+        <hr>`;
+
+      // 💡 步驟 2：產生 OCR 辨識出的菜單品項
       items.forEach((item, i) => {
         html += `
           <div class="d-flex align-items-center mb-3 p-2 bg-white border-bottom">
             <div class="flex-grow-1">
               <input type="text" class="form-control form-control-sm border-0 fw-bold" value="${item.name}" id="n${i}">
-              <input type="text" class="form-control form-control-sm border-0 text-muted" value="${item.price}" id="p${i}">
+              <input type="text" class="form-control form-control-sm border-0 text-muted" value="${item.price}" id="p${i}" style="font-size:12px;">
             </div>
             <div class="d-flex flex-column align-items-center ms-2">
               <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input" id="a${i}" checked style="transform: scale(1.2);">
               </div>
-              <div class="form-check">
-                <input type="radio" name="store" class="form-check-input" id="s${i}">
+              <div class="form-check" style="visibility: hidden;"> <input type="radio" name="store" class="form-check-input">
               </div>
             </div>
           </div>`;
@@ -118,47 +135,45 @@
       list.innerHTML = html;
     }
 
-    // 3. 送出資料
+    // 3. 送出資料 (配合新 UI 修改)
     async function submit() {
       const btn = document.getElementById('submitBtn');
-      
       try {
-        // 二度檢查登入 (防呆)
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: window.location.href });
-          return;
-        }
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: window.location.href }); return; }
 
         btn.innerHTML = "處理中...";
         btn.disabled = true;
 
-        let storeName = "未設定店名";
+        // 💡 抓取第一列固定的店名
+        let storeName = document.getElementById('storeNameInput').value;
+        if (storeName === "請輸入店家名稱" || storeName.trim() === "") {
+          alert("請先輸入店家名稱再存檔！");
+          btn.innerHTML = "確認傳送 (Save)";
+          btn.disabled = false;
+          return;
+        }
+
         let finalArr = [];
-        
         window.menuItems.forEach((_, i) => {
           const name = document.getElementById(`n${i}`).value;
           const price = document.getElementById(`p${i}`).value;
-          if (document.getElementById(`s${i}`).checked) storeName = name;
-          if (document.getElementById(`a${i}`).checked) finalArr.push({ name, price });
+          // 只有勾選加入的品項才存入
+          if (document.getElementById(`a${i}`).checked) {
+            finalArr.push({ name, price });
+          }
         });
 
         const msgText = `/SAVE_LIBRARY|${storeName}|${JSON.stringify(finalArr)}`;
 
-        // 檢查是否在 LINE App 內
         if (liff.isInClient()) {
           await liff.sendMessages([{ type: 'text', text: msgText }]);
-          // 成功後顯示提示並關閉
-          alert("✅ 存檔成功！回到聊天室查看結果。");
           liff.closeWindow();
         } else {
-          alert("請在 LINE 手機版使用此功能，電腦瀏覽器無法回傳訊息。");
-          btn.innerHTML = "確認傳送 (Save)";
+          alert("請在 LINE App 內使用");
           btn.disabled = false;
         }
-
       } catch (err) {
-        alert("傳送失敗：\n" + err.message + "\n\n請確認 LIFF Scopes 是否已開啟 chat_message.write");
-        btn.innerHTML = "確認傳送 (Save)";
+        alert("錯誤: " + err.message);
         btn.disabled = false;
       }
     }
