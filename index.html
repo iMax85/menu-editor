@@ -41,41 +41,45 @@
     async function init() {
       const loadingEl = document.getElementById('loading');
       
-      // A. 先檢查網址參數 (最優先)
+      // --- 智慧偵測 rowId 開始 ---
       const urlParams = new URLSearchParams(window.location.search);
-      const rowId = urlParams.get('row');
+      let rowId = urlParams.get('row');
+      
+      // 如果直接找不到 row，就去檢查是否被包在 liff.state 裡面
+      if (!rowId && urlParams.has('liff.state')) {
+        const liffState = urlParams.get('liff.state');
+        // liffState 的內容可能是 "?row=4" 或 "row=4"
+        const nestedParams = new URLSearchParams(liffState.startsWith('?') ? liffState : '?' + liffState);
+        rowId = nestedParams.get('row');
+      }
+      // --- 智慧偵測 rowId 結束 ---
       
       if (!rowId) {
-        loadingEl.innerHTML = "<h3 class='text-danger'>❌ 網址缺少參數</h3><p>請重新從 LINE 點擊連結開啟</p>";
+        loadingEl.innerHTML = "<h3 class='text-danger'>❌ 網址缺少參數</h3><p>偵測不到 row 編號</p>";
         return;
       }
 
       try {
-        // B. 啟動 LIFF (只做一次)
+        // 啟動 LIFF
         await liff.init({ liffId: LIFF_ID });
         
-        // 如果未登入，立刻導向登入，並指定 redirectUri 為「當前完整網址」
-        // 這樣回來時 ?row=xxx 才會還在
+        // 登入檢查與導向
         if (!liff.isLoggedIn()) {
+          // 確保登入後導向回帶有參數的完整網址
           liff.login({ redirectUri: window.location.href });
           return;
         }
 
-        // C. 向 GAS 請求資料
+        // 向 GAS 請求資料 (保持原本邏輯)
         loadingEl.innerHTML = `<div class="spinner-border text-success"></div><div class="mt-2">正在讀取第 ${rowId} 筆資料...</div>`;
-        
         const response = await fetch(GAS_API_URL + "?row=" + rowId);
         const data = await response.json();
         
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
+        if (data.error) throw new Error(data.error);
         renderList(data);
 
       } catch (e) {
         loadingEl.innerHTML = `<h5 class='text-danger'>讀取失敗</h5><p class='small text-muted'>${e.message}</p>`;
-        alert("錯誤：" + e.message);
       }
     }
 
