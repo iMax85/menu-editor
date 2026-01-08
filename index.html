@@ -39,6 +39,126 @@
     const LIFF_ID = '2008843970-PeS3Eu6o'; 
     // ⚠️ 請填入您剛剛部署 GAS 後產生的網址 (結尾是 /exec)
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec';
+    <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>菜單編輯器</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { padding: 20px 15px; background-color: #f8f9fa; font-family: sans-serif; }
+    .card { border-radius: 16px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .btn-save { background-color: #06c755; color: white; border: none; font-weight: bold; border-radius: 50px; }
+    /* ... 樣式保留 ... */
+  </style>
+</head>
+<body>
+  <div class="container p-0" style="max-width: 600px;">
+    <div class="card p-4">
+      <h5 class="mb-1 text-center fw-bold">🍱 菜單確認</h5>
+      <div id="menuList"></div>
+      <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-success" role="status"></div>
+        <div class="mt-2 small text-muted">正在讀取資料...</div>
+      </div>
+      <button id="submitBtn" class="btn btn-save w-100 py-3 mt-4 shadow-sm" onclick="submit()" style="display:none;">
+        確認傳送 (Save)
+      </button>
+    </div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    const LIFF_ID = '您的_LIFF_ID'; 
+    
+    // ⚠️ 請填入您剛剛部署 GAS 後產生的網址 (結尾是 /exec)
+    const GAS_API_URL = 'https://script.google.com/macros/s/您的_GAS_ID/exec';
+
+    async function init() {
+      // 1. 取得網址上的號碼牌 (row ID)
+      const urlParams = new URLSearchParams(window.location.search);
+      const rowId = urlParams.get('row');
+      
+      if (!rowId) {
+        document.getElementById('loading').innerHTML = "❌ 網址缺少參數";
+        return;
+      }
+
+      try {
+        // 2. 跟 GAS 要資料 (fetch)
+        const response = await fetch(GAS_API_URL + "?row=" + rowId);
+        const items = await response.json();
+        
+        renderList(items);
+      } catch (e) {
+        document.getElementById('loading').innerHTML = "❌ 資料讀取失敗<br>" + e.message;
+      }
+    }
+
+    function renderList(items) {
+      document.getElementById('loading').style.display = 'none';
+      const list = document.getElementById('menuList');
+      const btn = document.getElementById('submitBtn');
+      
+      if (!items || items.length === 0) {
+        list.innerHTML = "沒有資料";
+        return;
+      }
+      
+      btn.style.display = 'block';
+      items.forEach((item, i) => {
+        // ... (這裡產生 HTML 的邏輯跟之前一樣) ...
+        list.innerHTML += `
+          <div class="d-flex align-items-center mb-3 p-2 bg-white border-bottom">
+            <div class="flex-grow-1">
+              <input type="text" class="form-control form-control-sm border-0 fw-bold" value="${item.name}" id="n${i}">
+              <input type="text" class="form-control form-control-sm border-0 text-muted" value="${item.price}" id="p${i}">
+            </div>
+            <div class="d-flex flex-column align-items-center ms-2">
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="a${i}" checked>
+              </div>
+              <div class="form-check">
+                <input type="radio" name="store" class="form-check-input" id="s${i}">
+              </div>
+            </div>
+          </div>`;
+      });
+      window.menuItems = items; // 暫存給 submit 用
+    }
+
+    // ... (submit 函數跟之前一樣，不需要改) ...
+    async function submit() {
+       // ... 複製之前的 submit 邏輯 ...
+       // 記得: 遍歷 window.menuItems 來抓取 DOM 數值
+        try {
+        document.getElementById('submitBtn').innerHTML = "處理中...";
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+
+        let storeName = "未設定店名";
+        let finalArr = [];
+        
+        window.menuItems.forEach((_, i) => {
+          const name = document.getElementById(`n${i}`).value;
+          const price = document.getElementById(`p${i}`).value;
+          if (document.getElementById(`s${i}`).checked) storeName = name;
+          if (document.getElementById(`a${i}`).checked) finalArr.push({ name, price });
+        });
+
+        const msgText = `/SAVE_LIBRARY|${storeName}|${JSON.stringify(finalArr)}`;
+        if (liff.isInClient()) {
+          await liff.sendMessages([{ type: 'text', text: msgText }]);
+          liff.closeWindow();
+        }
+      } catch (err) { alert("錯誤: " + err.message); }
+    }
+
+    init();
+  </script>
+</body>
+</html>
 
     // 1. 解析網址中的資料 (Data from Hash) - 修正中文亂碼版
     function loadDataFromUrl() {
