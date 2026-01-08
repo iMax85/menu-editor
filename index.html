@@ -6,181 +6,99 @@
   <title>菜單編輯器</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
-    body { padding: 20px 15px; background-color: #f8f9fa; font-family: sans-serif; }
+    body { padding: 15px; background-color: #f8f9fa; font-family: sans-serif; }
     .card { border-radius: 16px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .btn-save { background-color: #06c755; color: white; border: none; font-weight: bold; border-radius: 50px; }
+    .form-control:focus { box-shadow: none; border-color: #06c755; }
+    .store-header { background-color: #eef9f1; border: 2px solid #06c755; border-radius: 12px; }
   </style>
 </head>
 <body>
   <div class="container p-0" style="max-width: 600px;">
-    <div class="card p-4">
-      <h5 class="mb-1 text-center fw-bold">🍱 菜單確認</h5>
+    <div class="card p-3">
+      <h5 class="mb-3 text-center fw-bold">🍱 菜單確認與存檔</h5>
       <div id="menuList"></div>
-      
       <div id="loading" class="text-center py-5">
-        <div class="spinner-border text-success" role="status"></div>
+        <div class="spinner-border text-success"></div>
         <div class="mt-2 small text-muted">正在讀取資料...</div>
       </div>
-
-      <button id="submitBtn" type="button" class="btn btn-save w-100 py-3 mt-4 shadow-sm" onclick="submit()" style="display:none;">
-        確認傳送 (Save)
-      </button>
+      <button id="submitBtn" class="btn btn-save w-100 py-3 mt-4 shadow-sm" onclick="submit()" style="display:none;">確認並更新圖書館</button>
     </div>
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    const LIFF_ID = '2008843970-PeS3Eu6o'; // ⚠️ 請確認 ID 正確
-    // ⚠️ 請確認這裡是您 GAS 部署後產生的網址 (結尾是 /exec)
+    const LIFF_ID = '2008843970-PeS3Eu6o'; 
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec';
 
-    // 全域變數儲存資料
-    window.menuItems = [];
-
-    // 1. 初始化流程
     async function init() {
-      const loadingEl = document.getElementById('loading');
-      
-      // --- 智慧偵測 rowId 開始 ---
       const urlParams = new URLSearchParams(window.location.search);
       let rowId = urlParams.get('row');
-      
-      // 如果直接找不到 row，就去檢查是否被包在 liff.state 裡面
       if (!rowId && urlParams.has('liff.state')) {
         const liffState = urlParams.get('liff.state');
-        // liffState 的內容可能是 "?row=4" 或 "row=4"
         const nestedParams = new URLSearchParams(liffState.startsWith('?') ? liffState : '?' + liffState);
         rowId = nestedParams.get('row');
       }
-      // --- 智慧偵測 rowId 結束 ---
-      
-      if (!rowId) {
-        loadingEl.innerHTML = "<h3 class='text-danger'>❌ 網址缺少參數</h3><p>偵測不到 row 編號</p>";
-        return;
-      }
+      if (!rowId) { document.getElementById('loading').innerHTML = "❌ 缺少參數"; return; }
 
       try {
-        // 啟動 LIFF
         await liff.init({ liffId: LIFF_ID });
-        
-        // 登入檢查與導向
-        if (!liff.isLoggedIn()) {
-          // 確保登入後導向回帶有參數的完整網址
-          liff.login({ redirectUri: window.location.href });
-          return;
-        }
-
-        // 向 GAS 請求資料 (保持原本邏輯)
-        loadingEl.innerHTML = `<div class="spinner-border text-success"></div><div class="mt-2">正在讀取第 ${rowId} 筆資料...</div>`;
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: window.location.href }); return; }
         const response = await fetch(GAS_API_URL + "?row=" + rowId);
         const data = await response.json();
-        
-        if (data.error) throw new Error(data.error);
         renderList(data);
-
-      } catch (e) {
-        loadingEl.innerHTML = `<h5 class='text-danger'>讀取失敗</h5><p class='small text-muted'>${e.message}</p>`;
-      }
+      } catch (e) { alert("讀取失敗: " + e.message); }
     }
 
-    // 2. 渲染列表
-    // 2. 渲染列表 (水平並列優化版)
     function renderList(items) {
       document.getElementById('loading').style.display = 'none';
       const list = document.getElementById('menuList');
-      const btn = document.getElementById('submitBtn');
+      document.getElementById('submitBtn').style.display = 'block';
+      window.menuItems = items || [];
       
-      if (!items) items = [];
-      window.menuItems = items; 
-      btn.style.display = 'block';
-      
-      let html = "";
-
-      // 💡 1. 固定產生第一列：餐廳名稱 (維持特殊樣式)
-      html += `
-        <div class="p-2 mb-3 bg-light rounded border-primary border" style="border-width: 2px !important;">
-          <label class="small text-primary fw-bold mb-1">🏠 餐廳名稱</label>
-          <div class="d-flex align-items-center">
-            <input type="text" class="form-control form-control-sm border-0 fw-bold text-primary flex-grow-1" 
-                   value="請輸入店家名稱" id="storeNameInput" 
-                   onfocus="if(this.value=='請輸入店家名稱')this.value=''" style="background:transparent;">
-            <div class="ms-2 d-flex align-items-center">
-              <input type="checkbox" class="form-check-input me-2" checked disabled>
-              <input type="radio" name="store" class="form-check-input" checked disabled>
-            </div>
+      let html = `
+        <div class="store-header p-3 mb-3">
+          <div class="mb-2">
+            <label class="small fw-bold text-success">🏠 店家名稱</label>
+            <input type="text" class="form-control form-control-sm border-0 fw-bold" value="請輸入店家名稱" id="storeName" onfocus="if(this.value=='請輸入店家名稱')this.value=''" style="background:transparent; font-size:16px;">
+          </div>
+          <div>
+            <label class="small fw-bold text-success">📞 聯絡電話</label>
+            <input type="text" class="form-control form-control-sm border-0" placeholder="請輸入電話號碼" id="storePhone" style="background:transparent;">
           </div>
         </div>
-        <div class="row g-0 mb-2 px-2 text-muted small fw-bold">
-          <div class="col-7">品項名稱</div>
-          <div class="col-3 text-center">價格</div>
-          <div class="col-2 text-end">加入</div>
-        </div>
-        <hr class="mt-0">`;
+        <div class="row g-0 mb-1 px-2 text-muted small fw-bold">
+          <div class="col-7">品項名稱</div><div class="col-3 text-center">價格</div><div class="col-2 text-end">加入</div>
+        </div><hr class="mt-0">`;
 
-      // 💡 2. 產生菜單品項 (品項與價格放在同一水平列)
-      items.forEach((item, i) => {
+      window.menuItems.forEach((item, i) => {
         html += `
           <div class="row g-1 align-items-center mb-2 pb-2 border-bottom">
-            <div class="col-7">
-              <input type="text" class="form-control form-control-sm border-0 fw-bold p-1" 
-                     value="${item.name}" id="n${i}" style="background:transparent;">
-            </div>
-            <div class="col-3">
-              <input type="text" class="form-control form-control-sm border-0 text-success p-1 text-center" 
-                     value="${item.price}" id="p${i}" style="background:transparent; font-weight:500;">
-            </div>
-            <div class="col-2 text-end px-2">
-              <input type="checkbox" class="form-check-input" id="a${i}" checked style="transform: scale(1.1);">
-            </div>
+            <div class="col-7"><input type="text" class="form-control form-control-sm border-0 fw-bold" value="${item.name}" id="n${i}" style="background:transparent;"></div>
+            <div class="col-3"><input type="text" class="form-control form-control-sm border-0 text-center" value="${item.price}" id="p${i}" style="background:transparent;"></div>
+            <div class="col-2 text-end"><input type="checkbox" class="form-check-input" id="a${i}" checked></div>
           </div>`;
       });
       list.innerHTML = html;
     }
-    
-    // 3. 送出資料 (配合新 UI 修改)
+
     async function submit() {
-      const btn = document.getElementById('submitBtn');
-      try {
-        if (!liff.isLoggedIn()) { liff.login({ redirectUri: window.location.href }); return; }
-
-        btn.innerHTML = "處理中...";
-        btn.disabled = true;
-
-        // 💡 抓取第一列固定的店名
-        let storeName = document.getElementById('storeNameInput').value;
-        if (storeName === "請輸入店家名稱" || storeName.trim() === "") {
-          alert("請先輸入店家名稱再存檔！");
-          btn.innerHTML = "確認傳送 (Save)";
-          btn.disabled = false;
-          return;
+      const sName = document.getElementById('storeName').value;
+      const sPhone = document.getElementById('storePhone').value;
+      if (sName === "請輸入店家名稱" || !sName.trim()) { alert("請填寫店名"); return; }
+      
+      let finalArr = [];
+      window.menuItems.forEach((_, i) => {
+        if (document.getElementById(`a${i}`).checked) {
+          finalArr.push({ name: document.getElementById(`n${i}`).value, price: document.getElementById(`p${i}`).value });
         }
+      });
 
-        let finalArr = [];
-        window.menuItems.forEach((_, i) => {
-          const name = document.getElementById(`n${i}`).value;
-          const price = document.getElementById(`p${i}`).value;
-          // 只有勾選加入的品項才存入
-          if (document.getElementById(`a${i}`).checked) {
-            finalArr.push({ name, price });
-          }
-        });
-
-        const msgText = `/SAVE_LIBRARY|${storeName}|${JSON.stringify(finalArr)}`;
-
-        if (liff.isInClient()) {
-          await liff.sendMessages([{ type: 'text', text: msgText }]);
-          liff.closeWindow();
-        } else {
-          alert("請在 LINE App 內使用");
-          btn.disabled = false;
-        }
-      } catch (err) {
-        alert("錯誤: " + err.message);
-        btn.disabled = false;
-      }
+      // 修改回傳格式：/SAVE_LIBRARY|店名|電話|JSON
+      const cmd = `/SAVE_LIBRARY|${sName}|${sPhone}|${JSON.stringify(finalArr)}`;
+      await liff.sendMessages([{ type: 'text', text: cmd }]);
+      liff.closeWindow();
     }
-
-    // 啟動
     init();
   </script>
 </body>
