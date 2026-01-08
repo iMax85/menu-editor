@@ -9,7 +9,6 @@
     body { padding: 20px 15px; background-color: #f8f9fa; font-family: sans-serif; }
     .card { border-radius: 16px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .btn-save { background-color: #06c755; color: white; border: none; font-weight: bold; border-radius: 50px; }
-    /* ... 樣式保留 ... */
   </style>
 </head>
 <body>
@@ -17,11 +16,13 @@
     <div class="card p-4">
       <h5 class="mb-1 text-center fw-bold">🍱 菜單確認</h5>
       <div id="menuList"></div>
+      
       <div id="loading" class="text-center py-5">
         <div class="spinner-border text-success" role="status"></div>
         <div class="mt-2 small text-muted">正在讀取資料...</div>
       </div>
-      <button id="submitBtn" class="btn btn-save w-100 py-3 mt-4 shadow-sm" onclick="submit()" style="display:none;">
+
+      <button id="submitBtn" type="button" class="btn btn-save w-100 py-3 mt-4 shadow-sm" onclick="submit()" style="display:none;">
         確認傳送 (Save)
       </button>
     </div>
@@ -29,32 +30,56 @@
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    const LIFF_ID = '2008843970-PeS3Eu6o'; 
-    
-    // ⚠️ 請填入您剛剛部署 GAS 後產生的網址 (結尾是 /exec)
+    const LIFF_ID = '2008843970-PeS3Eu6o'; // ⚠️ 請確認 ID 正確
+    // ⚠️ 請確認這裡是您 GAS 部署後產生的網址 (結尾是 /exec)
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec';
 
+    // 全域變數儲存資料
+    window.menuItems = [];
+
+    // 1. 初始化流程
     async function init() {
-      // 1. 取得網址上的號碼牌 (row ID)
+      const loadingEl = document.getElementById('loading');
+      
+      // A. 先檢查網址參數 (最優先)
       const urlParams = new URLSearchParams(window.location.search);
       const rowId = urlParams.get('row');
       
       if (!rowId) {
-        document.getElementById('loading').innerHTML = "❌ 網址缺少參數";
+        loadingEl.innerHTML = "<h3 class='text-danger'>❌ 網址缺少參數</h3><p>請重新從 LINE 點擊連結開啟</p>";
         return;
       }
 
       try {
-        // 2. 跟 GAS 要資料 (fetch)
-        const response = await fetch(GAS_API_URL + "?row=" + rowId);
-        const items = await response.json();
+        // B. 啟動 LIFF (只做一次)
+        await liff.init({ liffId: LIFF_ID });
         
-        renderList(items);
+        // 如果未登入，立刻導向登入，並指定 redirectUri 為「當前完整網址」
+        // 這樣回來時 ?row=xxx 才會還在
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
+        // C. 向 GAS 請求資料
+        loadingEl.innerHTML = `<div class="spinner-border text-success"></div><div class="mt-2">正在讀取第 ${rowId} 筆資料...</div>`;
+        
+        const response = await fetch(GAS_API_URL + "?row=" + rowId);
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        renderList(data);
+
       } catch (e) {
-        document.getElementById('loading').innerHTML = "❌ 資料讀取失敗<br>" + e.message;
+        loadingEl.innerHTML = `<h5 class='text-danger'>讀取失敗</h5><p class='small text-muted'>${e.message}</p>`;
+        alert("錯誤：" + e.message);
       }
     }
 
+    // 2. 渲染列表
     function renderList(items) {
       document.getElementById('loading').style.display = 'none';
       const list = document.getElementById('menuList');
@@ -65,10 +90,12 @@
         return;
       }
       
+      window.menuItems = items; // 存入全域變數
       btn.style.display = 'block';
+      
+      let html = "";
       items.forEach((item, i) => {
-        // ... (這裡產生 HTML 的邏輯跟之前一樣) ...
-        list.innerHTML += `
+        html += `
           <div class="d-flex align-items-center mb-3 p-2 bg-white border-bottom">
             <div class="flex-grow-1">
               <input type="text" class="form-control form-control-sm border-0 fw-bold" value="${item.name}" id="n${i}">
@@ -76,7 +103,7 @@
             </div>
             <div class="d-flex flex-column align-items-center ms-2">
               <div class="form-check mb-2">
-                <input type="checkbox" class="form-check-input" id="a${i}" checked>
+                <input type="checkbox" class="form-check-input" id="a${i}" checked style="transform: scale(1.2);">
               </div>
               <div class="form-check">
                 <input type="radio" name="store" class="form-check-input" id="s${i}">
@@ -84,17 +111,22 @@
             </div>
           </div>`;
       });
-      window.menuItems = items; // 暫存給 submit 用
+      list.innerHTML = html;
     }
 
-    // ... (submit 函數跟之前一樣，不需要改) ...
+    // 3. 送出資料
     async function submit() {
-       // ... 複製之前的 submit 邏輯 ...
-       // 記得: 遍歷 window.menuItems 來抓取 DOM 數值
-        try {
-        document.getElementById('submitBtn').innerHTML = "處理中...";
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
+      const btn = document.getElementById('submitBtn');
+      
+      try {
+        // 二度檢查登入 (防呆)
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
+        btn.innerHTML = "處理中...";
+        btn.disabled = true;
 
         let storeName = "未設定店名";
         let finalArr = [];
@@ -107,13 +139,27 @@
         });
 
         const msgText = `/SAVE_LIBRARY|${storeName}|${JSON.stringify(finalArr)}`;
+
+        // 檢查是否在 LINE App 內
         if (liff.isInClient()) {
           await liff.sendMessages([{ type: 'text', text: msgText }]);
+          // 成功後顯示提示並關閉
+          alert("✅ 存檔成功！回到聊天室查看結果。");
           liff.closeWindow();
+        } else {
+          alert("請在 LINE 手機版使用此功能，電腦瀏覽器無法回傳訊息。");
+          btn.innerHTML = "確認傳送 (Save)";
+          btn.disabled = false;
         }
-      } catch (err) { alert("錯誤: " + err.message); }
+
+      } catch (err) {
+        alert("傳送失敗：\n" + err.message + "\n\n請確認 LIFF Scopes 是否已開啟 chat_message.write");
+        btn.innerHTML = "確認傳送 (Save)";
+        btn.disabled = false;
+      }
     }
 
+    // 啟動
     init();
   </script>
 </body>
