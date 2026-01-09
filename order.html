@@ -82,9 +82,33 @@
 
       if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
 
-      const cmd = `/COMMIT_ORDER|${storeName}|${JSON.stringify(orders)}`;
-      await liff.sendMessages([{ type: 'text', text: cmd }]);
-      liff.closeWindow();
+      // --- 👇 修改從這裡開始 👇 ---
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = "傳送中...";
+      btn.disabled = true;
+
+      try {
+        if (!liff.isInClient()) {
+          alert("請在 LINE 手機版使用此功能！");
+          btn.innerText = "送出訂單";
+          btn.disabled = false;
+          return;
+        }
+
+        const cmd = `/COMMIT_ORDER|${storeName}|${JSON.stringify(orders)}`;
+        
+        // 嘗試發送訊息
+        await liff.sendMessages([{ type: 'text', text: cmd }]);
+        
+        // 成功後關閉
+        liff.closeWindow();
+        
+      } catch (err) {
+        // ❌ 如果失敗，顯示錯誤原因 (通常是權限 user doesn't grant required permissions)
+        alert("傳送失敗！\n原因：" + err.message + "\n\n請檢查 LINE Developers 的 Scopes 是否已勾選 chat_message.write");
+        btn.innerText = "送出訂單";
+        btn.disabled = false;
+      }
     }
     init();
   </script>
