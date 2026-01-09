@@ -107,7 +107,18 @@
       await liff.sendMessages([{ type: 'text', text: cmd }]);
       liff.closeWindow();
     }
+
+    async function deleteTemp() {
+      if (!currentRow) return;
+      if (!confirm("確定要刪除這筆暫存資料嗎？")) return;
+      
+      // 送出刪除指令
+      const cmd = `/DELETE_TEMP|${currentRow}`;
+      await liff.sendMessages([{ type: 'text', text: cmd }]);
+      liff.closeWindow();
+    }
     init();
   </script>
+  <button class="btn btn-danger mt-3 w-100" onclick="deleteTemp()">🗑️ 放棄此筆資料 (刪除暫存)</button>
 </body>
 </html>
