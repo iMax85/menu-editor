@@ -30,6 +30,9 @@
   <script>
     const LIFF_ID = '2008843970-PeS3Eu6o'; 
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec';
+    // 確保全域變數有這個
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentRow = urlParams.get('row'); // 這是關鍵，從網址 ?row=5 抓出 5
 
     async function init() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -95,7 +98,12 @@
       });
 
       // 修改回傳格式：/SAVE_LIBRARY|店名|電話|JSON
-      const cmd = `/SAVE_LIBRARY|${sName}|${sPhone}|${JSON.stringify(finalArr)}`;
+
+      // 舊指令： const cmd = `/SAVE_LIBRARY|${sName}|${sPhone}|${JSON.stringify(finalArr)}`;
+      // 👇 改成新指令：多帶一個 currentRow (行號)
+      // 格式：/SAVE_EDITOR_DATA|行號|店名|電話|JSON
+      const cmd = `/SAVE_EDITOR_DATA|${currentRow}|${name}|${phone}|${JSON.stringify(items)}`;
+      
       await liff.sendMessages([{ type: 'text', text: cmd }]);
       liff.closeWindow();
     }
