@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>點餐選單</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { background-color: #f4f7f6; padding: 15px; font-family: sans-serif; }
+    .item-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #ddd; background: #fff; font-weight: bold; }
+    .submit-btn { background-color: #00B900; color: white; border-radius: 50px; font-weight: bold; padding: 15px; border: none; }
+  </style>
+</head>
+<body>
+  <div class="container p-0">
+    <h4 id="storeTitle" class="text-center fw-bold mb-3">讀取中...</h4>
+    <div id="menuList"></div>
+    <div id="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+    <button id="submitBtn" class="btn submit-btn w-100 mt-3 shadow" onclick="submitOrder()" style="display:none;">送出訂單</button>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    const LIFF_ID = '您的_LIFF_ID'; 
+    const GAS_API_URL = '您的_GAS_API_URL';
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeName = urlParams.get('store');
+
+    async function init() {
+      document.getElementById('storeTitle').innerText = "🍱 " + storeName;
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        const res = await fetch(`${GAS_API_URL}?action=getMenu&store=${encodeURIComponent(storeName)}`);
+        const items = await res.json();
+        renderMenu(items);
+      } catch (e) { alert("讀取失敗: " + e.message); }
+    }
+
+    function renderMenu(items) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('submitBtn').style.display = 'block';
+      const list = document.getElementById('menuList');
+      window.menuData = items;
+
+      items.forEach((item, i) => {
+        list.innerHTML += `
+          <div class="item-card d-flex align-items-center">
+            <input type="checkbox" class="form-check-input me-3" id="check${i}" style="transform: scale(1.3);">
+            <div class="flex-grow-1">
+              <div class="fw-bold">${item.name}</div>
+              <div class="text-success small">$${item.price}</div>
+              <input type="text" class="form-control form-control-sm mt-1" placeholder="備註 (如:去冰、不辣)" id="note${i}">
+            </div>
+            <div class="d-flex align-items-center ms-2">
+              <button class="qty-btn" onclick="updateQty(${i}, -1)">-</button>
+              <span class="mx-2 fw-bold" id="qty${i}">1</span>
+              <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
+            </div>
+          </div>`;
+      });
+    }
+
+    function updateQty(index, delta) {
+      const el = document.getElementById(`qty${index}`);
+      let current = parseInt(el.innerText);
+      if (current + delta >= 1) el.innerText = current + delta;
+    }
+
+    async function submitOrder() {
+      let orders = [];
+      window.menuData.forEach((item, i) => {
+        if (document.getElementById(`check${i}`).checked) {
+          orders.push({
+            item: item.name,
+            price: item.price,
+            qty: document.getElementById(`qty${i}`).innerText,
+            note: document.getElementById(`note${i}`).value
+          });
+        }
+      });
+
+      if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
+
+      const cmd = `/COMMIT_ORDER|${storeName}|${JSON.stringify(orders)}`;
+      await liff.sendMessages([{ type: 'text', text: cmd }]);
+      liff.closeWindow();
+    }
+    init();
+  </script>
+</body>
+</html>
