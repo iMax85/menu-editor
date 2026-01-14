@@ -19,6 +19,9 @@
     <div id="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
     
     <button id="submitBtn" class="btn submit-btn w-100 mt-3 shadow" onclick="submitOrder()" style="display:none;">送出訂單</button>
+    <button id="cancelBtn" class="btn btn-outline-danger w-100 mt-3 border-0" onclick="cancelMyOrder()" style="display:none;">
+      🗑️ 取消/重置訂單
+    </button>
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -51,6 +54,7 @@
     function renderMenu(items) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('submitBtn').style.display = 'block';
+      document.getElementById('cancelBtn').style.display = 'block'; //加回去
       const list = document.getElementById('menuList');
       window.menuData = items;
 
@@ -70,6 +74,21 @@
             </div>
           </div>`;
       });
+    }
+
+    async function cancelMyOrder() {
+      if (!confirm("確定要刪除您在這家店的所有訂單嗎？")) return;
+
+      try {
+        // 傳送文字指令： /CANCEL_ORDER|店名
+        const msg = "/CANCEL_ORDER|" + storeName;
+        
+        await liff.sendMessages([{ type: 'text', text: msg }]);
+        liff.closeWindow();
+        
+      } catch (err) {
+        alert("取消失敗，請確認權限。\n" + err.message);
+      }
     }
 
     function updateQty(index, delta) {
