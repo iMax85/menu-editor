@@ -43,6 +43,7 @@
     function renderMenu(items) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('submitBtn').style.display = 'block';
+      document.getElementById('cancelBtn').style.display = 'block'; // 👈 記得加這行
       const list = document.getElementById('menuList');
       window.menuData = items;
 
@@ -62,6 +63,50 @@
             </div>
           </div>`;
       });
+    }
+
+    async function cancelMyOrder() {
+      if (!confirm("確定要刪除您在「" + storeName + "」的所有餐點嗎？\n(若要換餐，請刪除後再重新勾選送出)")) return;
+
+      const btn = document.getElementById('cancelBtn');
+      btn.innerText = "刪除中...";
+      btn.disabled = true;
+
+      try {
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const profile = await liff.getProfile();
+
+        const payload = {
+            action: "cancel_order",
+            storeName: storeName,
+            userId: profile.userId
+        };
+
+        const response = await fetch(GAS_API_URL, {
+            method: "POST",
+            body: JSON.stringify(payload) 
+        });
+        
+        const result = await response.json();
+
+        if (result.status === "success") {
+            alert("已刪除您之前的 " + result.count + " 筆訂單！");
+            
+            // 這裡可以選擇：
+            // 1. 直接關閉視窗 (單純取消)
+            // liff.closeWindow(); 
+            
+            // 2. 或者重整頁面讓他也許想重點 (比較友善)
+            location.reload(); 
+            
+        } else {
+            throw new Error(result.message);
+        }
+      } catch (err) {
+        alert("取消失敗：" + err.message);
+        btn.innerText = "🗑️ 取消/重置我在這家店的訂單";
+        btn.disabled = false;
+      }
     }
 
     function updateQty(index, delta) {
