@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>點餐選單_v3</title>
+  <title>點餐選單_v2</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #f4f7f6; padding: 10px; font-family: sans-serif; }
@@ -143,7 +143,6 @@
 
     // 🚀 核心修改：改回發送 /COMMIT_ORDER 文字訊息
     async function submitOrder() {
-      // 1. 收集訂單
       let orders = [];
       window.menuData.forEach((item, i) => {
         if (document.getElementById(`check${i}`).checked) {
@@ -158,58 +157,19 @@
 
       if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
 
-      const btn = document.getElementById('submitBtn');
-      btn.innerText = "資料傳送中...";
-      btn.disabled = true;
-
       try {
-        // 2. 檢查登入與權限
-        if (!liff.isLoggedIn()) {
-            liff.login({ scope: "chat_message.write" }); // 強制要求發言權限
-            return;
-        }
-        const profile = await liff.getProfile();
-
-        // 3. 準備要在背景傳送的資料
-        const payload = {
-            action: "direct_order", 
-            storeName: storeName,
-            userId: profile.userId,
-            displayName: profile.displayName,
-            orders: orders
-        };
-
-        // 4. 背景傳送給 GAS (這步不會在聊天室顯示任何東西)
-        const response = await fetch(GAS_API_URL, {
-            method: "POST",
-            body: JSON.stringify(payload)
-            // ⚠️ 這裡故意不加 header，避免 GAS 跨域問題 (CORS)
-        });
+        // 1. 組合成指令字串
+        const msg = "/COMMIT_ORDER|" + storeName + "|" + JSON.stringify(orders);
         
-        const result = await response.json();
-
-        if (result.status === "success") {
-            // 5. 存檔成功！只發送一句簡單的話讓大家知道
-            // 如果這步報錯，代表 LIFF 權限有問題，但其實資料已經存進去了
-            if (liff.isInClient()) {
-                try {
-                    await liff.sendMessages([{ 
-                        type: 'text', 
-                        text: "✅ 我點好餐了 (" + storeName + ")" 
-                    }]);
-                } catch (msgErr) {
-                    console.log("發訊失敗(可能是權限問題)，但訂單已存檔");
-                }
-            }
-            liff.closeWindow();
-        } else {
-            throw new Error("伺服器回傳錯誤");
-        }
+        // 2. 透過 LIFF 在聊天室幫用戶發言
+        await liff.sendMessages([{ type: 'text', text: msg }]);
+        
+        // 3. 關閉視窗
+        liff.closeWindow();
         
       } catch (err) {
-        alert("傳送失敗：" + err.message);
-        btn.innerText = "送出訂單";
-        btn.disabled = false;
+        // 這裡如果是 400 Bad Request，依然代表 LIFF 權限有問題
+        alert("發送失敗！\n錯誤：" + err.message + "\n請確認 LIFF ID 設定與權限是否正確。");
       }
     }
     
