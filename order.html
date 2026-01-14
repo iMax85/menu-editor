@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>點餐選單_v1</title>
+  <title>點餐選單_v2</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #f4f7f6; padding: 15px; font-family: sans-serif; }
@@ -88,24 +88,39 @@
     function renderMenu(items) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('submitBtn').style.display = 'block';
-      document.getElementById('cancelBtn').style.display = 'block'; //加回去
+      
+      // 如果有取消按鈕，也要記得顯示
+      const cancelBtn = document.getElementById('cancelBtn');
+      if(cancelBtn) cancelBtn.style.display = 'block';
+
       const list = document.getElementById('menuList');
-      window.menuData = items;
+      window.menuData = items; // 存入全域變數供送出時使用
 
       items.forEach((item, i) => {
+        // 為了節省空間，將價格顯示為 ($100) 的格式
         list.innerHTML += `
           <div class="item-card d-flex align-items-center">
-            <input type="checkbox" class="form-check-input me-3" id="check${i}" style="transform: scale(1.3);">
-            <div class="flex-grow-1">
-              <div class="fw-bold">${item.name}</div>
-              <div class="text-success small">$${item.price}</div>
-              <input type="text" class="form-control form-control-sm mt-1" placeholder="備註 (如:去冰、不辣)" id="note${i}">
+            
+            <div class="me-2">
+              <input type="checkbox" class="form-check-input" id="check${i}" style="transform: scale(1.2);">
             </div>
-            <div class="d-flex align-items-center ms-2">
-              <button class="qty-btn" onclick="updateQty(${i}, -1)">-</button>
-              <span class="mx-2 fw-bold" id="qty${i}">1</span>
-              <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
+            
+            <div class="flex-grow-1 text-truncate pe-2" style="font-size: 15px; line-height: 1.2;">
+              <span class="fw-bold text-dark">${item.name}</span>
+              <br>
+              <span class="text-secondary small" style="font-size: 12px;">$${item.price}</span>
             </div>
+
+            <div class="me-2">
+              <input type="text" class="note-input w-100" style="width: 70px;" placeholder="備註" id="note${i}">
+            </div>
+
+            <div class="d-flex align-items-center bg-light rounded-pill px-1" style="border: 1px solid #eee;">
+              <button class="qty-btn border-0 bg-transparent" onclick="updateQty(${i}, -1)">-</button>
+              <span class="mx-1 fw-bold small" id="qty${i}" style="min-width: 15px; text-align: center;">1</span>
+              <button class="qty-btn border-0 bg-transparent" onclick="updateQty(${i}, 1)">+</button>
+            </div>
+
           </div>`;
       });
     }
