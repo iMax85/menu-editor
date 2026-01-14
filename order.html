@@ -68,6 +68,7 @@
     }
 
     async function submitOrder() {
+      // 1. 收集訂單資料
       let orders = [];
       window.menuData.forEach((item, i) => {
         if (document.getElementById(`check${i}`).checked) {
@@ -82,30 +83,52 @@
 
       if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
 
-      // --- 👇 修改從這裡開始 👇 ---
       const btn = document.getElementById('submitBtn');
-      btn.innerText = "傳送中...";
+      btn.innerText = "資料傳送中...";
       btn.disabled = true;
 
       try {
-        if (!liff.isInClient()) {
-          alert("請在 LINE 手機版使用此功能！");
-          btn.innerText = "送出訂單";
-          btn.disabled = false;
-          return;
+        // 2. 取得使用者資料 (為了存檔用)
+        if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
         }
+        const profile = await liff.getProfile();
 
-        const cmd = `/COMMIT_ORDER|${storeName}|${JSON.stringify(orders)}`;
+        // 3. 準備要在背景傳送的資料包
+        const payload = {
+            action: "direct_order", // 告訴 GAS 這是直接存檔
+            storeName: storeName,   // 從網址參數來的店名
+            userId: profile.userId,
+            displayName: profile.displayName,
+            orders: orders
+        };
+
+        // 4. 使用 fetch 直接呼叫 GAS (背景存檔)
+        // 注意：這裡不設定 Content-Type header，避免 CORS 預檢請求失敗，GAS 會自動判斷
+        const response = await fetch(GAS_API_URL, {
+            method: "POST",
+            body: JSON.stringify(payload) 
+        });
         
-        // 嘗試發送訊息
-        await liff.sendMessages([{ type: 'text', text: cmd }]);
-        
-        // 成功後關閉
-        liff.closeWindow();
+        const result = await response.json();
+
+        if (result.status === "success") {
+            // 5. 存檔成功後，幫使用者在群組發一個「乾淨」的通知 (選用)
+            if (liff.isInClient()) {
+                await liff.sendMessages([{ 
+                    type: 'text', 
+                    text: "✅ 我點好餐了" 
+                }]);
+            }
+            // 關閉視窗
+            liff.closeWindow();
+        } else {
+            throw new Error(result.message || "未知錯誤");
+        }
         
       } catch (err) {
-        // ❌ 如果失敗，顯示錯誤原因 (通常是權限 user doesn't grant required permissions)
-        alert("傳送失敗！\n原因：" + err.message + "\n\n請檢查 LINE Developers 的 Scopes 是否已勾選 chat_message.write");
+        alert("傳送失敗！\n原因：" + err.message);
         btn.innerText = "送出訂單";
         btn.disabled = false;
       }
