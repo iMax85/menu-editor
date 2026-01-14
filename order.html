@@ -25,6 +25,40 @@
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { background-color: #f4f7f6; padding: 10px; font-family: sans-serif; }
+    
+    /* 卡片改為緊湊的一行佈局 */
+    .item-card { 
+      background: white; 
+      border-radius: 8px; 
+      padding: 8px 10px; /* 縮小內距 */
+      margin-bottom: 8px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+      height: 60px; /* 固定高度讓視覺整齊 */
+    }
+
+    /* 圓形按鈕微調 */
+    .qty-btn { 
+      width: 24px; height: 24px; /* 稍微縮小按鈕 */
+      border-radius: 50%; border: 1px solid #ddd; 
+      background: #fff; font-weight: bold; line-height: 22px; padding: 0;
+      color: #00B900;
+    }
+
+    /* 送出按鈕 */
+    .submit-btn { background-color: #00B900; color: white; border-radius: 50px; font-weight: bold; padding: 12px; border: none; }
+    
+    /* 備註欄樣式：變得比較迷你 */
+    .note-input {
+      border: 1px solid #eee;
+      border-radius: 4px;
+      font-size: 12px;
+      padding: 4px;
+      background-color: #fafafa;
+    }
+    .note-input:focus { background-color: #fff; border-color: #00B900; outline: none; }
+  </style>
   <script>
     const LIFF_ID = '2008843970-plLtL947'; // ⚠️ 請確認這裡填的是正確的 LIFF ID
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec'; // ⚠️ 請填入 GAS 網址
