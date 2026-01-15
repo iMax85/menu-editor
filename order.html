@@ -8,17 +8,15 @@
   <style>
     body { background-color: #f4f7f6; padding: 10px; font-family: sans-serif; }
     
-    /* 卡片改為緊湊的一行佈局 */
     .item-card { 
       background: white; 
       border-radius: 8px; 
       padding: 8px 10px; 
       margin-bottom: 8px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-      height: 60px; /* 固定高度讓視覺整齊 */
+      height: 60px; 
     }
 
-    /* 圓形按鈕微調 */
     .qty-btn { 
       width: 24px; height: 24px; 
       border-radius: 50%; border: 1px solid #ddd; 
@@ -26,10 +24,8 @@
       color: #00B900;
     }
 
-    /* 送出按鈕 */
     .submit-btn { background-color: #00B900; color: white; border-radius: 50px; font-weight: bold; padding: 12px; border: none; }
     
-    /* 備註欄樣式：變得比較迷你 */
     .note-input {
       border: 1px solid #eee;
       border-radius: 4px;
@@ -49,27 +45,26 @@
     <button id="submitBtn" class="btn submit-btn w-100 mt-3 shadow" onclick="submitOrder()" style="display:none;">送出訂單</button>
     
     <button id="cancelBtn" class="btn btn-outline-danger w-100 mt-3 border-0" onclick="cancelMyOrder()" style="display:none;">
-      🗑️ 取消/重置訂單
+      🗑️ 取消/重置我在這家店的訂單
     </button>
   </div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    const LIFF_ID = '2008843970-plLtL947'; // ⚠️ 請確認 LIFF ID 正確
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec'; // ⚠️ 請確認 GAS 網址正確
+    const LIFF_ID = '2008843970-plLtL947'; 
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzDPUvZg5-vxSV5mRC7qfsgNyez18dLorbwRItZ_ALXDsxbW7pC_I3PAuTEEe530BYQWA/exec'; 
 
     const urlParams = new URLSearchParams(window.location.search);
     const storeName = urlParams.get('store');
 
-    // 初始化
     async function init() {
       document.getElementById('storeTitle').innerText = "🍱 " + storeName;
       try {
         await liff.init({ liffId: LIFF_ID });
         
-        // 雖然是背景傳輸，但因為要推播，所以建議保留這個檢查
+        // 👇 修改 1: 移除 scope 參數，單純登入即可
         if (!liff.isLoggedIn()) {
-           liff.login({ scope: "chat_message.write" });
+           liff.login(); 
            return;
         }
 
@@ -79,7 +74,6 @@
       } catch (e) { alert("讀取失敗: " + e.message); }
     }
 
-    // 渲染菜單 (單行緊湊版)
     function renderMenu(items) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('submitBtn').style.display = 'block';
@@ -91,27 +85,22 @@
       items.forEach((item, i) => {
         list.innerHTML += `
           <div class="item-card d-flex align-items-center">
-            
             <div class="me-2">
               <input type="checkbox" class="form-check-input" id="check${i}" style="transform: scale(1.2);">
             </div>
-            
             <div class="flex-grow-1 text-truncate pe-2" style="font-size: 15px; line-height: 1.2;">
               <span class="fw-bold text-dark">${item.name}</span>
               <br>
               <span class="text-secondary small" style="font-size: 12px;">$${item.price}</span>
             </div>
-
             <div class="me-2">
               <input type="text" class="note-input w-100" style="width: 70px;" placeholder="備註" id="note${i}">
             </div>
-
             <div class="d-flex align-items-center bg-light rounded-pill px-1" style="border: 1px solid #eee;">
               <button class="qty-btn border-0 bg-transparent" onclick="updateQty(${i}, -1)">-</button>
               <span class="mx-1 fw-bold small" id="qty${i}" style="min-width: 15px; text-align: center;">1</span>
               <button class="qty-btn border-0 bg-transparent" onclick="updateQty(${i}, 1)">+</button>
             </div>
-
           </div>`;
       });
     }
@@ -122,7 +111,6 @@
       if (current + delta >= 1) el.innerText = current + delta;
     }
 
-    // 🚀 取消訂單 (修正：改為背景 fetch，不發言)
     async function cancelMyOrder() {
       if (!confirm("確定要刪除您在「" + storeName + "」的所有餐點嗎？\n(若要換餐，請刪除後再重新勾選送出)")) return;
 
@@ -131,6 +119,7 @@
       btn.disabled = true;
 
       try {
+        // 👇 修改 2: 移除 scope
         if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
 
@@ -149,7 +138,7 @@
 
         if (result.status === "success") {
             alert("已刪除您之前的 " + result.count + " 筆訂單！");
-            location.reload(); // 重整頁面
+            location.reload(); 
         } else {
             throw new Error(result.message);
         }
@@ -160,9 +149,7 @@
       }
     }
 
-    // 🚀 送出訂單 (維持正確的背景推播邏輯)
     async function submitOrder() {
-      // 1. 收集訂單
       let orders = [];
       window.menuData.forEach((item, i) => {
         if (document.getElementById(`check${i}`).checked) {
@@ -182,29 +169,23 @@
       btn.disabled = true;
 
       try {
-        // 2. 檢查登入
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-        }
+        // 👇 修改 3: 移除 scope
+        if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
         
-        // 抓取目前所在的 Context (為了推播)
         const context = liff.getContext();
         const targetId = (context && context.type === 'group') ? context.groupId : 
                          (context && context.type === 'room') ? context.roomId : profile.userId;
 
-        // 3. 準備 Payload
         const payload = {
             action: "direct_order", 
             storeName: storeName,
             userId: profile.userId,
             displayName: profile.displayName,
-            targetId: targetId, // 這是觸發推播的關鍵
+            targetId: targetId, 
             orders: orders
         };
 
-        // 4. 背景傳送
         const response = await fetch(GAS_API_URL, {
             method: "POST",
             body: JSON.stringify(payload)
@@ -213,7 +194,6 @@
         const result = await response.json();
 
         if (result.status === "success") {
-            // 成功後直接關閉，由機器人推播
             liff.closeWindow();
         } else {
             throw new Error("伺服器回傳錯誤");
