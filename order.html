@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>點餐選單_v1</title>
+  <title>點餐選單_v3</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #f4f7f6; padding: 15px; font-family: sans-serif; }
@@ -99,6 +99,7 @@
 
     // 🚀 核心修改：改回發送 /COMMIT_ORDER 文字訊息
     async function submitOrder() {
+      // 1. 收集訂單
       let orders = [];
       window.menuData.forEach((item, i) => {
         if (document.getElementById(`check${i}`).checked) {
@@ -113,19 +114,53 @@
 
       if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
 
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = "資料傳送中...";
+      btn.disabled = true;
+
       try {
-        // 1. 組合成指令字串
-        const msg = "/COMMIT_ORDER|" + storeName + "|" + JSON.stringify(orders);
+        // 2. 檢查登入
+        if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+        }
+        const profile = await liff.getProfile();
         
-        // 2. 透過 LIFF 在聊天室幫用戶發言
-        await liff.sendMessages([{ type: 'text', text: msg }]);
+        // 🚀 新增：抓取目前所在的 Context (為了知道要推播到哪個群組)
+        const context = liff.getContext();
+        // 優先使用 groupId (群組)，如果是 1對1 聊天則使用 userId
+        const targetId = (context && context.type === 'group') ? context.groupId : 
+                         (context && context.type === 'room') ? context.roomId : profile.userId;
+
+        // 3. 準備要在背景傳送的資料
+        const payload = {
+            action: "direct_order", 
+            storeName: storeName,
+            userId: profile.userId,
+            displayName: profile.displayName,
+            targetId: targetId, // 👈 把目標 ID (群組或個人) 傳給後端
+            orders: orders
+        };
+
+        // 4. 背景傳送給 GAS
+        const response = await fetch(GAS_API_URL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
         
-        // 3. 關閉視窗
-        liff.closeWindow();
+        const result = await response.json();
+
+        if (result.status === "success") {
+            // ✅ 成功後直接關閉視窗，不做任何發言 (讓機器人自己推播)
+            liff.closeWindow();
+        } else {
+            throw new Error("伺服器回傳錯誤");
+        }
         
       } catch (err) {
-        // 這裡如果是 400 Bad Request，依然代表 LIFF 權限有問題
-        alert("發送失敗！\n錯誤：" + err.message + "\n請確認 LIFF ID 設定與權限是否正確。");
+        alert("傳送失敗：" + err.message);
+        btn.innerText = "送出訂單";
+        btn.disabled = false;
       }
     }
     
