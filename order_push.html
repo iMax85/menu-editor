@@ -8,7 +8,6 @@
   <style>
     body { background-color: #f4f7f6; padding: 10px; font-family: sans-serif; }
     
-    /* 1.5 列卡片排版 */
     .item-card { 
       background: white; 
       border-radius: 12px; 
@@ -17,15 +16,15 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
     }
 
-    /* 第一列：橫向排列 */
+    /* 第一列佈局 */
     .row-top { display: flex; align-items: center; margin-bottom: 8px; }
 
-    /* 品名與價格資訊 */
     .item-info { flex-grow: 1; padding-left: 10px; }
-    .item-name { font-weight: bold; font-size: 16px; display: block; }
-    .item-price { color: #28a745; font-size: 14px; }
+    
+    /* 修正點：移除 display: block 讓名稱與價格同列 */
+    .item-name { font-weight: bold; font-size: 16px; }
+    .item-price { color: #28a745; font-size: 14px; margin-left: 8px; }
 
-    /* 數量按鈕組 */
     .qty-group { 
       display: flex; align-items: center; 
       background: #f8f9fa; border-radius: 20px; padding: 2px 8px; 
@@ -36,7 +35,6 @@
       font-weight: bold; color: #00B900;
     }
 
-    /* 第二列：備註框 (單獨一列) */
     .note-input {
       width: 100%;
       border: 1px solid #eee;
@@ -47,7 +45,6 @@
     }
     .note-input:focus { border-color: #00B900; outline: none; background: #fff; }
 
-    /* 送出按鈕 */
     .submit-btn { background-color: #00B900; color: white; border-radius: 50px; font-weight: bold; padding: 15px; border: none; }
   </style>
 </head>
@@ -63,7 +60,6 @@
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    // ⚠️ 記得更換為新機器人的參數
     const LIFF_ID = '2008939522-yZK6Iyb6'; 
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyDcGGvYcChszNtJRFL-HLD7Tv8aUmICLiCi4b2xhhPLtKCnO_NiRUViyL6gbQyq80ELA/exec'; 
 
@@ -74,7 +70,6 @@
       document.getElementById('storeTitle').innerText = "🍱 " + storeName;
       try {
         await liff.init({ liffId: LIFF_ID });
-        // 不再需要 chat_message.write 權限，避免報錯
         if (!liff.isLoggedIn()) { liff.login(); return; } 
         
         const res = await fetch(`${GAS_API_URL}?action=getMenu&store=${encodeURIComponent(storeName)}`);
@@ -105,9 +100,7 @@
                 <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
               </div>
             </div>
-            <div class="row-bottom">
-              <input type="text" class="note-input" placeholder="有什麼特殊要求嗎？(如：不辣、去冰)" id="note${i}">
-            </div>
+            <input type="text" class="note-input" placeholder="有什麼特殊要求嗎？(如：不辣、去冰)" id="note${i}">
           </div>`;
       });
     }
@@ -118,7 +111,6 @@
       if (c + d >= 1) el.innerText = c + d;
     }
 
-    // 背景傳輸點餐 (Push 模式)
     async function submitOrder() {
       let orders = [];
       window.menuData.forEach((item, i) => {
@@ -132,7 +124,6 @@
       });
 
       if (orders.length === 0) { alert("請至少勾選一項餐點！"); return; }
-
       const btn = document.getElementById('submitBtn');
       btn.innerText = "傳送中...";
       btn.disabled = true;
@@ -140,7 +131,6 @@
       try {
         const profile = await liff.getProfile();
         const context = liff.getContext();
-        // 抓取群組 ID，讓機器人知道推播到哪裡
         const targetId = (context && (context.groupId || context.roomId)) ? (context.groupId || context.roomId) : profile.userId;
 
         const payload = { 
@@ -154,12 +144,8 @@
 
         const response = await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
         const result = await response.json();
-        
-        if (result.status === "success") {
-          liff.closeWindow(); // 成功後直接關閉，由機器人推播訊息
-        } else {
-          throw new Error(result.message);
-        }
+        if (result.status === "success") { liff.closeWindow(); } 
+        else { throw new Error(result.message); }
       } catch (err) {
         alert("傳送失敗：" + err.message);
         btn.innerText = "送出訂單";
@@ -167,9 +153,8 @@
       }
     }
 
-    // 背景傳輸取消 (靜默模式)
     async function cancelMyOrder() {
-      if (!confirm("確定要刪除您在這家店的所有訂單嗎？")) return;
+      if (!confirm("確定要取消訂單嗎？")) return;
       try {
         const profile = await liff.getProfile();
         const payload = { action: "cancel_order", storeName: storeName, userId: profile.userId };
@@ -179,9 +164,7 @@
           alert("已成功取消訂單！");
           location.reload();
         }
-      } catch (err) {
-        alert("取消失敗：" + err.message);
-      }
+      } catch (err) { alert("取消失敗：" + err.message); }
     }
     init();
   </script>
