@@ -51,16 +51,16 @@
     }
 
     async function loadTempData() {
-      // 呼叫 GAS 讀取 OCR_Temp_Data 的資料 (利用 action=getTemp)
-      // 注意：這需要在 GAS doGet 補一個 getTemp 功能，或者我們直接用這裡的 fetch 技巧
-      // 為了簡化，我們先用一個簡單的假設：您剛剛OCR已經成功了，
-      // 如果您想在編輯器「看到」剛剛辨識的結果，GAS 的 doGet 需要多一個功能。
-      // 這裡先提供「存檔」功能，顯示部分若需要我再補上 doGet 代碼。
-      
-      // 暫時解法：因為 doGet 還沒寫讀取暫存，我們先顯示空白讓您填，
-      // 或是您可以手動輸入。
-      // 若要完整功能，請看下一步驟的「補充 doGet」。
-      renderItems([{name: "範例品項", price: "100"}]); 
+      if (!rowId) return; // 如果沒有行號就不讀取
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getTemp&row=${rowId}`);
+        const data = await res.json();
+        // 如果 OCR 有抓到店名(假設存檔格式支援)，這裡也可以預填
+        // 目前先填入品項
+        renderItems(data); 
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function renderItems(items) {
