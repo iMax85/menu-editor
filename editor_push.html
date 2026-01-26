@@ -38,16 +38,38 @@
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyDcGGvYcChszNtJRFL-HLD7Tv8aUmICLiCi4b2xhhPLtKCnO_NiRUViyL6gbQyq80ELA/exec'; 
 
     const urlParams = new URLSearchParams(window.location.search);
-    const rowId = urlParams.get('row'); // 從網址參數抓取暫存行號
+    const rowId = urlParams.get('row');     // 來自 OCR 的暫存行號
+    const storeParam = urlParams.get('store'); // 🚀 來自管理員的店名
 
     let currentItems = [];
-
+    
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
 
-      // 讀取暫存資料
-      loadTempData();
+      // 判斷是「新OCR」還是「修改舊資料」
+      if (storeParam) {
+        loadExistingStoreData(storeParam); // 🚀 載入舊資料模式
+      } else if (rowId) {
+        loadTempData(rowId); // 載入 OCR 暫存模式
+      }
+    }
+
+    // 🚀 新增：載入舊店家資料
+    async function loadExistingStoreData(store) {
+      document.getElementById('saveBtn').innerText = "🔄 更新現有資料";
+      try {
+        // 呼叫剛剛在 doGet 新增的 getStoreFullData
+        const res = await fetch(`${GAS_API_URL}?action=getStoreFullData&store=${encodeURIComponent(store)}`);
+        const data = await res.json();
+        
+        // 填入資料
+        document.getElementById('storeName').value = data.storeName;
+        document.getElementById('storePhone').value = data.storePhone; // 這裡會自動填入電話
+        renderItems(data.menuItems);
+      } catch (e) {
+        alert("讀取店家資料失敗：" + e.message);
+      }
     }
 
     async function loadTempData() {
