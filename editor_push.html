@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>菜單編輯器 (Push版)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { background-color: #f8f9fa; padding: 20px; }
+    .item-row { background: white; padding: 10px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .del-btn { color: red; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width: 600px;">
+    <h4 class="mb-3 text-center fw-bold">📝 菜單編輯確認</h4>
+    
+    <div class="mb-3">
+      <label class="form-label">店家名稱</label>
+      <input type="text" id="storeName" class="form-control" placeholder="請輸入店名">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">聯絡電話</label>
+      <input type="text" id="storePhone" class="form-control" placeholder="選填">
+    </div>
+
+    <hr>
+    <div id="itemsContainer"></div>
+    
+    <button class="btn btn-outline-secondary w-100 mb-2" onclick="addItem()">+ 新增品項</button>
+    <button id="saveBtn" class="btn btn-success w-100 py-2 fw-bold" onclick="saveData()">✅ 確認並更新資料庫</button>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    // ⚠️ 請務必換成您「新建」給編輯器用的 LIFF ID
+    const LIFF_ID = '您的_編輯器專用_LIFF_ID'; 
+    const GAS_API_URL = '您的_GAS_API_網址'; 
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const rowId = urlParams.get('row'); // 從網址參數抓取暫存行號
+
+    let currentItems = [];
+
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+
+      // 讀取暫存資料
+      loadTempData();
+    }
+
+    async function loadTempData() {
+      // 呼叫 GAS 讀取 OCR_Temp_Data 的資料 (利用 action=getTemp)
+      // 注意：這需要在 GAS doGet 補一個 getTemp 功能，或者我們直接用這裡的 fetch 技巧
+      // 為了簡化，我們先用一個簡單的假設：您剛剛OCR已經成功了，
+      // 如果您想在編輯器「看到」剛剛辨識的結果，GAS 的 doGet 需要多一個功能。
+      // 這裡先提供「存檔」功能，顯示部分若需要我再補上 doGet 代碼。
+      
+      // 暫時解法：因為 doGet 還沒寫讀取暫存，我們先顯示空白讓您填，
+      // 或是您可以手動輸入。
+      // 若要完整功能，請看下一步驟的「補充 doGet」。
+      renderItems([{name: "範例品項", price: "100"}]); 
+    }
+
+    function renderItems(items) {
+      const container = document.getElementById('itemsContainer');
+      container.innerHTML = "";
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'item-row d-flex gap-2 align-items-center';
+        div.innerHTML = `
+          <input type="text" class="form-control" value="${item.name}" placeholder="品項" onchange="updateItem(${index}, 'name', this.value)">
+          <input type="number" class="form-control" value="${item.price}" placeholder="$" style="width: 80px;" onchange="updateItem(${index}, 'price', this.value)">
+          <span class="del-btn" onclick="removeItem(${index})">✕</span>
+        `;
+        container.appendChild(div);
+      });
+      currentItems = items;
+    }
+
+    function addItem() {
+      currentItems.push({name: "", price: ""});
+      renderItems(currentItems);
+    }
+
+    function removeItem(index) {
+      currentItems.splice(index, 1);
+      renderItems(currentItems);
+    }
+
+    function updateItem(index, field, value) {
+      currentItems[index][field] = value;
+    }
+
+    async function saveData() {
+      const storeName = document.getElementById('storeName').value;
+      const storePhone = document.getElementById('storePhone').value;
+      if(!storeName) { alert("請輸入店家名稱"); return; }
+
+      const btn = document.getElementById('saveBtn');
+      btn.innerText = "資料寫入中...";
+      btn.disabled = true;
+
+      try {
+        const profile = await liff.getProfile();
+        
+        const payload = {
+          action: "save_editor_data",
+          userId: profile.userId,
+          rowId: rowId,
+          storeName: storeName,
+          storePhone: storePhone,
+          menuItems: currentItems
+        };
+
+        await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
+        
+        alert("保存成功！");
+        liff.closeWindow();
+      } catch (err) {
+        alert("失敗：" + err.message);
+        btn.innerText = "確認並更新資料庫";
+        btn.disabled = false;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
