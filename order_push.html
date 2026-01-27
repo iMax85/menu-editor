@@ -97,11 +97,18 @@
     }
 
     // 🚀 回復您要求的菜單顯示方式
+    // 🚀 修改 renderMenu：顯示菜單圖書館的備註
     function renderMenu(items) {
       const container = document.getElementById('menuContainer');
       container.innerHTML = "";
       
       items.forEach((item, i) => {
+        // 判斷有沒有備註，有的話就準備 HTML，沒有就空字串
+        const memoHtml = item.memo ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">ℹ️ ${item.memo}</div>` : "";
+        
+        // 如果有圖書館備註，也可以把它放進輸入框的提示文字裡 (選用)
+        const placeholderText = item.memo ? `備註 (預設: ${item.memo})` : "有什麼特殊要求嗎？";
+
         const div = document.createElement('div');
         div.className = "item-card";
         div.innerHTML = `
@@ -110,14 +117,14 @@
             <div class="item-info">
               <span class="item-name">${item.name}</span>
               <span class="item-price">$${item.price}</span>
-            </div>
+              ${memoHtml} </div>
             <div class="qty-group">
               <button class="qty-btn" onclick="updateQty(${i}, -1)">-</button>
               <span class="mx-2 fw-bold" id="qty${i}">1</span>
               <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
             </div>
           </div>
-          <input type="text" class="note-input" placeholder="有什麼特殊要求嗎？" id="note${i}">
+          <input type="text" class="note-input" placeholder="${placeholderText}" id="note${i}">
         `;
         container.appendChild(div);
       });
