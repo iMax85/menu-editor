@@ -21,7 +21,6 @@
 
     .item-info { flex-grow: 1; padding-left: 10px; }
     
-    /* 修正點：移除 display: block 讓名稱與價格同列 */
     .item-name { font-weight: bold; font-size: 16px; }
     .item-price { color: #28a745; font-size: 14px; margin-left: 8px; }
 
@@ -50,11 +49,16 @@
 </head>
 <body>
   <div class="container p-0">
+    <div id="welcomeMsg" class="text-center mb-2 text-secondary small"></div>
+    
     <h4 id="storeTitle" class="text-center fw-bold mb-3">🍱 載入中...</h4>
-    <div id="menuList"></div>
+    
+    <div id="menuContainer"></div>
+    
     <div id="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
     
     <button id="submitBtn" class="btn submit-btn w-100 mt-2 shadow" onclick="submitOrder()" style="display:none;">送出訂單</button>
+    
     <button id="cancelBtn" class="btn btn-outline-danger w-100 mt-3 border-0" onclick="cancelMyOrder()" style="display:none;">🗑️ 取消我在這家店的訂單</button>
   </div>
 
@@ -63,160 +67,201 @@
     const LIFF_ID = '2008939522-yZK6Iyb6'; 
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyDcGGvYcChszNtJRFL-HLD7Tv8aUmICLiCi4b2xhhPLtKCnO_NiRUViyL6gbQyq80ELA/exec'; 
 
-    // 🚀 關鍵修正 1：一進來就先抓網址上的參數 (GAS 傳來的)
-  const urlParams = new URLSearchParams(window.location.search);
-  const storeNameParam = urlParams.get('store');
-  const targetIdFromUrl = urlParams.get('targetId'); // 這是 GAS 傳來的正確群組 ID
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeNameParam = urlParams.get('store');
+    const targetIdFromUrl = urlParams.get('targetId'); 
 
-  let currentMenu = []; // 存放菜單資料
+    let currentMenu = []; 
 
-  // ================= 2. 初始化函式 (init) =================
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
+    // ================= 初始化 =================
+    async function init() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
 
-      // 檢查是否登入
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-
-      // 顯示歡迎訊息
-      const profile = await liff.getProfile();
-      document.getElementById('welcomeMsg').innerText = `Hi, ${profile.displayName}`;
-
-      // 載入菜單
-      if (storeNameParam) {
-        document.getElementById('storeTitle').innerText = storeNameParam; // 顯示店名
-        loadMenu(storeNameParam);
-      } else {
-        alert("❌ 網址參數錯誤：找不到店家名稱，請從 LINE 重新點擊按鈕。");
-      }
-
-    } catch (err) {
-      console.error('LIFF Initialization failed', err);
-      alert('LIFF 初始化失敗：' + err.message);
-    }
-  }
-
-  // 讀取菜單資料 (保持不變，但為了完整性列出來)
-  async function loadMenu(store) {
-    try {
-      const res = await fetch(`${GAS_API_URL}?action=getMenu&store=${encodeURIComponent(store)}`);
-      const data = await res.json();
-      currentMenu = data;
-      renderMenu(data);
-    } catch (e) {
-      alert("讀取菜單失敗，請稍後再試。");
-    }
-  }
-
-  // 渲染菜單 (保持不變)
-  function renderMenu(items) {
-    const container = document.getElementById('menuContainer');
-    container.innerHTML = "";
-    items.forEach((item, index) => {
-      // 簡單的 HTML 結構，您可以保留您原本美化的樣式
-      const div = document.createElement('div');
-      div.className = "card mb-2 shadow-sm";
-      div.innerHTML = `
-        <div class="card-body d-flex justify-content-between align-items-center">
-          <div>
-            <h5 class="card-title mb-0">${item.name}</h5>
-            <small class="text-muted">$${item.price}</small>
-          </div>
-          <div class="d-flex align-items-center gap-2">
-            <input type="number" class="form-control" id="qty-${index}" value="0" min="0" style="width: 60px;">
-            <input type="text" class="form-control" id="note-${index}" placeholder="備註" style="width: 80px; font-size: 12px;">
-          </div>
-        </div>
-      `;
-      container.appendChild(div);
-    });
-  }
-
-  // ================= 3. 送出訂單函式 (submitOrder) =================
-  async function submitOrder() {
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.innerText = "傳送中...";
-
-    try {
-      // 1. 收集訂單內容
-      let orders = [];
-      let totalQty = 0;
-      
-      currentMenu.forEach((item, index) => {
-        const qtyInput = document.getElementById(`qty-${index}`);
-        const noteInput = document.getElementById(`note-${index}`);
-        const qty = parseInt(qtyInput.value);
-        
-        if (qty > 0) {
-          orders.push({
-            item: item.name,
-            price: item.price,
-            qty: qty,
-            note: noteInput.value
-          });
-          totalQty += qty;
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
         }
+
+        const profile = await liff.getProfile();
+        // 修正: 這裡現在能找到 welcomeMsg 了
+        const welcomeEl = document.getElementById('welcomeMsg');
+        if(welcomeEl) welcomeEl.innerText = `Hi, ${profile.displayName}`;
+
+        if (storeNameParam) {
+          document.getElementById('storeTitle').innerText = storeNameParam; 
+          loadMenu(storeNameParam);
+        } else {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('storeTitle').innerText = "❌ 網址參數錯誤";
+          alert("找不到店家名稱，請從 LINE 重新點擊按鈕。");
+        }
+
+      } catch (err) {
+        console.error('LIFF Error', err);
+        alert('初始化失敗：' + err.message);
+      }
+    }
+
+    async function loadMenu(store) {
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getMenu&store=${encodeURIComponent(store)}`);
+        const data = await res.json();
+        currentMenu = data;
+        renderMenu(data);
+      } catch (e) {
+        document.getElementById('loading').style.display = 'none';
+        alert("讀取菜單失敗，請檢查網路或稍後再試。");
+      }
+    }
+
+    function renderMenu(items) {
+      // 修正: HTML ID 已經改為 menuContainer，這裡可以正常運作了
+      const container = document.getElementById('menuContainer');
+      container.innerHTML = "";
+      
+      if (items.length === 0) {
+          container.innerHTML = "<p class='text-center text-muted'>暫無菜單資料</p>";
+      }
+
+      items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "card mb-2 shadow-sm";
+        div.innerHTML = `
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title mb-0">${item.name}</h5>
+              <small class="text-muted">$${item.price}</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <input type="number" class="form-control" id="qty-${index}" value="0" min="0" style="width: 60px;">
+              <input type="text" class="form-control" id="note-${index}" placeholder="備註" style="width: 80px; font-size: 12px;">
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
       });
 
-      if (totalQty === 0) {
-        alert("您還沒選擇任何餐點喔！");
+      // 修正 3: 載入完成後，隱藏轉圈圈，顯示按鈕
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('submitBtn').style.display = 'block';
+      document.getElementById('cancelBtn').style.display = 'block';
+    }
+
+    // ================= 送出訂單 =================
+    async function submitOrder() {
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerText = "傳送中...";
+
+      try {
+        let orders = [];
+        let totalQty = 0;
+        
+        currentMenu.forEach((item, index) => {
+          const qtyInput = document.getElementById(`qty-${index}`);
+          const noteInput = document.getElementById(`note-${index}`);
+          const qty = parseInt(qtyInput.value);
+          
+          if (qty > 0) {
+            orders.push({
+              item: item.name,
+              price: item.price,
+              qty: qty,
+              note: noteInput.value
+            });
+            totalQty += qty;
+          }
+        });
+
+        if (totalQty === 0) {
+          alert("您還沒選擇任何餐點喔！");
+          submitBtn.disabled = false;
+          submitBtn.innerText = "送出訂單";
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        const context = liff.getContext();
+
+        let finalTargetId = targetIdFromUrl;
+        
+        if (!finalTargetId) {
+           if (context && (context.type === 'group' || context.type === 'room')) {
+               finalTargetId = context.groupId || context.roomId;
+           } else {
+               finalTargetId = profile.userId;
+           }
+        }
+
+        const payload = {
+          action: "direct_order",
+          targetId: finalTargetId,
+          userId: profile.userId,
+          displayName: profile.displayName,
+          storeName: storeNameParam,
+          orders: orders
+        };
+
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        alert("✅ 點餐成功！");
+        liff.closeWindow();
+
+      } catch (err) {
+        alert("❌ 發生錯誤：" + err.message);
         submitBtn.disabled = false;
         submitBtn.innerText = "送出訂單";
-        return;
       }
-
-      // 2. 取得使用者資料
-      const profile = await liff.getProfile();
-      const context = liff.getContext();
-
-      // 🚀 關鍵修正 2：決定 targetId 的優先順序
-      // 優先權：網址參數 (targetIdFromUrl) > LIFF Context 群組 ID > 使用者 ID
-      let finalTargetId = targetIdFromUrl;
-      
-      if (!finalTargetId) {
-         // 如果網址沒帶參數 (例如直接開網頁)，嘗試抓 LIFF context
-         if (context && (context.type === 'group' || context.type === 'room')) {
-             finalTargetId = context.groupId || context.roomId;
-         } else {
-             finalTargetId = profile.userId; // 最後退路：當作是私訊
-         }
-      }
-
-      // 3. 準備傳送給 GAS 的資料包
-      const payload = {
-        action: "direct_order",
-        targetId: finalTargetId, // 👈 這裡傳送正確的 ID 給 GAS
-        userId: profile.userId,
-        displayName: profile.displayName,
-        storeName: storeNameParam,
-        orders: orders
-      };
-
-      // 4. 發送請求
-      // 使用 no-cors 雖然不會報錯，但無法讀取回應，建議標準 fetch
-      // 這裡假設您的 GAS 有正確處理 CORS (回傳 JSON)
-      await fetch(GAS_API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-
-      // 5. 成功後關閉視窗
-      alert("✅ 點餐成功！");
-      liff.closeWindow();
-
-    } catch (err) {
-      alert("❌ 發生錯誤：" + err.message);
-      submitBtn.disabled = false;
-      submitBtn.innerText = "送出訂單";
     }
-  }
-  
-  // 啟動初始化
-  init();
+
+    // 修正 4: 補上取消訂單的函式
+    async function cancelMyOrder() {
+        if(!confirm("確定要取消您在這家店的所有訂單嗎？")) return;
+        
+        const btn = document.getElementById('cancelBtn');
+        btn.disabled = true;
+        btn.innerText = "取消中...";
+
+        try {
+            const profile = await liff.getProfile();
+            const context = liff.getContext();
+            
+            let finalTargetId = targetIdFromUrl;
+            if (!finalTargetId) {
+                if (context && (context.type === 'group' || context.type === 'room')) {
+                    finalTargetId = context.groupId || context.roomId;
+                } else {
+                    finalTargetId = profile.userId; 
+                }
+            }
+
+            const payload = {
+                action: "cancel_order",
+                targetId: finalTargetId,
+                userId: profile.userId,
+                storeName: storeNameParam
+            };
+
+            await fetch(GAS_API_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+
+            alert("🗑️ 已送出取消請求！");
+            liff.closeWindow();
+
+        } catch (err) {
+            alert("❌ 取消失敗：" + err.message);
+            btn.disabled = false;
+            btn.innerText = "🗑️ 取消我在這家店的訂單";
+        }
+    }
+    
+    init();
   </script>
 </body>
 </html>
