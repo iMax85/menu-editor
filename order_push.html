@@ -3,133 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>點餐選單(IV) - 清新薄荷版</title>
+  <title>點餐選單(II)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
-    /* ================== 🎨 色彩定義區 ================== */
+    /* ================== 🎨 色彩定義區 (暖橘色系) ================== */
     :root {
-      --primary-mint: #4FDAC1;       /* 主色調：鮮明薄荷綠 (參考色卡中間) */
-      --primary-mint-dark: #3CAEA3;  /* 深色調：用於按鈕 hover 或強調 */
-      --bg-mint-light: #E8F8F5;      /* 背景色：極淺薄荷白 (參考色卡最左) */
-      --text-dark: #444444;          /* 主要文字色 */
+      --primary-orange: #FF8C42;     /* 主色調：活力橘 (對應頭像) */
+      --primary-dark: #F2711C;       /* 深色調：按鈕 hover 用 */
+      --bg-cream: #FFFBF5;           /* 背景色：溫暖奶油白 */
+      --text-dark: #5D4037;          /* 文字色：深咖啡色 (比純黑柔和) */
+      --price-color: #E65100;        /* 價格色：深橘紅，強調金額 */
     }
 
     /* ================== 全局樣式 ================== */
     body { 
-      background-color: var(--bg-mint-light); /* 改用淺薄荷背景 */
+      background-color: var(--bg-cream); 
       padding: 10px; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--text-dark);
     }
 
-    /* 標題顏色強化 */
-    #storeTitle { color: #333; }
+    /* 標題 */
+    #storeTitle { color: var(--text-dark); letter-spacing: 1px; }
 
-    /* ================== 卡片與內容 ================== */
+    /* ================== 卡片與排版 ================== */
     .item-card { 
       background: white; 
-      border-radius: 16px; /* 圓角稍微加大一點更可愛 */
-      padding: 15px; 
+      border-radius: 16px; 
+      padding: 12px 15px; 
       margin-bottom: 12px; 
-      box-shadow: 0 4px 12px rgba(79, 218, 193, 0.15); /* 陰影帶一點點薄荷色 */
-      border: 1px solid rgba(79, 218, 193, 0.1); /* 極細微的邊框 */
-    }
-    .row-top { display: flex; align-items: flex-start; margin-bottom: 10px; }
-    .item-info { flex-grow: 1; padding-left: 12px; }
-    
-    .item-name { 
-      font-weight: bold; font-size: 16px; display: block; margin-bottom: 4px;
-    }
-    
-    /* 價格改用主色調，並加粗 */
-    .item-price { 
-      color: var(--primary-mint); 
-      font-weight: 800; font-size: 15px; 
+      box-shadow: 0 4px 10px rgba(255, 140, 66, 0.1); /* 橘色淡淡陰影 */
+      border: 1px solid rgba(255, 140, 66, 0.15); 
     }
 
-    /* 備註說明文字 */
+    /* 第一列：Checkbox + 文字資訊 + 數量按鈕 */
+    .row-top { 
+      display: flex; 
+      align-items: center; /* 垂直置中 */
+      margin-bottom: 10px; 
+    }
+
+    /* 修正點：讓中間的資訊區塊內的文字能「接續排列」 */
+    .item-info { 
+      flex-grow: 1; 
+      padding-left: 10px; 
+      padding-right: 5px;
+      line-height: 1.4; /* 行距稍微拉開一點比較好讀 */
+    }
+    
+    /* 品名：加粗，深色 */
+    .item-name { 
+      font-weight: bold; 
+      font-size: 16px; 
+      color: var(--text-dark);
+      margin-right: 6px; /* 與價格的間距 */
+    }
+    
+    /* 價格：橘紅色，加粗 */
+    .item-price { 
+      color: var(--price-color); 
+      font-weight: 800; 
+      font-size: 15px; 
+      margin-right: 6px; /* 與備註的間距 */
+    }
+
+    /* 菜單備註：灰色小字，底色標籤感 */
     .item-memo {
-      font-size: 12px; color: #999; margin-top: 4px;
+      font-size: 12px; 
+      color: #999; 
+      background-color: #F5F5F5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block; /* 保持整塊不被打斷 */
+      vertical-align: middle;
     }
 
     /* ================== 互動元件 ================== */
-    /* Checkbox 勾選後的顏色 */
+    /* Checkbox */
     .form-check-input:checked {
-      background-color: var(--primary-mint);
-      border-color: var(--primary-mint);
+      background-color: var(--primary-orange);
+      border-color: var(--primary-orange);
     }
-    .form-check-input { cursor: pointer; }
+    .form-check-input { 
+      cursor: pointer; 
+      width: 1.3em; height: 1.3em; /* 稍微放大一點 */
+      margin-top: 0; /* 修正 Bootstrap 預設位移 */
+    }
 
     /* 加減數量區塊 */
     .qty-group { 
       display: flex; align-items: center; 
-      background: var(--bg-mint-light); /* 背景改用淺薄荷色 */
-      border-radius: 20px; padding: 4px 8px;
-      margin-top: 5px;
+      background: #FFF0E0; /* 淺橘色背景 */
+      border-radius: 20px; padding: 2px 4px;
+      flex-shrink: 0; /* 防止被壓縮 */
     }
     .qty-btn { 
-      width: 30px; height: 30px; border-radius: 50%; border: none;
+      width: 28px; height: 28px; border-radius: 50%; border: none;
       background: #fff; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       font-weight: 900; font-size: 16px;
-      color: var(--primary-mint); /* 按鈕文字顏色 */
-      transition: all 0.2s;
+      color: var(--primary-orange);
     }
-    .qty-btn:active { background-color: var(--primary-mint); color: white; }
-    .qty-num { font-weight: bold; margin: 0 10px; color: #555; }
+    .qty-btn:active { background-color: var(--primary-orange); color: white; }
+    .qty-num { font-weight: bold; margin: 0 8px; color: var(--text-dark); min-width: 16px; text-align: center; }
 
-    /* 備註輸入框 */
+    /* 第二列：點餐備註輸入框 */
     .note-input {
       width: 100%; border: 1px solid #eee; border-radius: 10px;
-      padding: 10px 12px; font-size: 13px; background-color: #fcfcfc;
+      padding: 10px 12px; font-size: 13px; background-color: #FAFAFA;
       transition: border-color 0.3s;
     }
-    /* 輸入框聚焦時的顏色 */
     .note-input:focus { 
-      border-color: var(--primary-mint); 
-      box-shadow: 0 0 0 3px rgba(79, 218, 193, 0.2); /* 薄荷色光暈 */
+      border-color: var(--primary-orange); 
+      box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.2); 
       outline: none; background: #fff; 
     }
 
-    /* ================== 主按鈕 ================== */
+    /* ================== 按鈕 ================== */
     .submit-btn { 
-      background-color: var(--primary-mint); /* 主色調背景 */
+      background-color: var(--primary-orange); 
       color: white; border-radius: 50px; 
       font-weight: bold; padding: 15px; border: none; 
-      box-shadow: 0 4px 10px rgba(79, 218, 193, 0.4); /* 按鈕陰影 */
-      transition: background-color 0.3s;
+      box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
     }
     .submit-btn:hover, .submit-btn:active {
-      background-color: var(--primary-mint-dark) !important; /* hover 時變深一點 */
+      background-color: var(--primary-dark) !important;
       color: white;
     }
-
-    /* 取消按鈕樣式調整 */
+    
     .btn-outline-danger {
-      border-radius: 50px; padding: 12px;
-      color: #ff6b6b; border-color: #ff6b6b;
+      border-radius: 50px; 
+      color: #FF6B6B; border-color: #FF6B6B;
     }
-    .btn-outline-danger:hover { background-color: #ff6b6b; color: white; }
+    .btn-outline-danger:hover { background-color: #FF6B6B; color: white; }
 
-    /* 載入中的轉圈圈顏色覆蓋 Bootstrap 預設 */
-    .text-success { color: var(--primary-mint) !important; }
+    /* 載入動畫顏色 */
+    .text-success { color: var(--primary-orange) !important; }
   </style>
 </head>
 <body>
   <div class="container p-0" style="max-width: 600px;">
-    <div id="welcomeMsg" class="text-center mb-2 text-secondary small" style="opacity: 0.8;"></div>
+    <div id="welcomeMsg" class="text-center mb-2 small" style="color: #888;"></div>
     
-    <h4 id="storeTitle" class="text-center fw-bold mb-4" style="letter-spacing: 1px;">🍱 載入中...</h4>
+    <h4 id="storeTitle" class="text-center fw-bold mb-4">🍱 載入中...</h4>
     
     <div id="menuContainer"></div>
     
     <div id="loading" class="text-center py-5">
-      <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
-      <div class="mt-2" style="color: var(--primary-mint);">正在準備菜單...</div>
+      <div class="spinner-border text-success" role="status"></div>
+      <div class="mt-2" style="color: var(--primary-orange);">菜單準備中...</div>
     </div>
     
     <div class="p-2">
-      <button id="submitBtn" class="btn submit-btn w-100 mt-3 mb-2" onclick="submitOrder()" style="display:none;">送出訂單</button>
+      <button id="submitBtn" class="btn submit-btn w-100 mt-2 mb-2" onclick="submitOrder()" style="display:none;">送出訂單</button>
       <button id="cancelBtn" class="btn btn-outline-danger w-100 border-0" onclick="cancelMyOrder()" style="display:none; font-size: 14px;">🗑️ 取消我在這家店的訂單</button>
     </div>
   </div>
@@ -168,14 +194,13 @@
 
     async function loadMenu(store) {
       try {
-        // 注意：這裡確認有包含上一版要求的 &action=getMenu
         const res = await fetch(`${GAS_API_URL}?action=getMenu&store=${encodeURIComponent(store)}`);
         const data = await res.json();
         currentMenu = data;
         renderMenu(data);
       } catch (e) {
         document.getElementById('loading').style.display = 'none';
-        alert("讀取菜單失敗，請稍後再試。");
+        alert("讀取菜單失敗。");
       }
     }
 
@@ -185,29 +210,31 @@
       
       items.forEach((item, i) => {
         // 處理備註顯示 HTML
-        const memoHtml = item.memo ? `<div class="item-memo">ℹ️ ${item.memo}</div>` : "";
+        const memoHtml = item.memo ? `<span class="item-memo">ℹ️ ${item.memo}</span>` : "";
         // 處理輸入框提示文字
-        const placeholderText = item.memo ? `備註 (預設: ${item.memo})` : "有什麼特殊要求嗎？(如：不辣、去冰)";
+        const placeholderText = item.memo ? `備註 (預設: ${item.memo})` : "有什麼特殊要求嗎？";
 
         const div = document.createElement('div');
         div.className = "item-card";
         div.innerHTML = `
           <div class="row-top">
-            <div style="padding-top: 4px;">
-                <input type="checkbox" class="form-check-input" id="check${i}" style="transform: scale(1.3);">
+            <div style="display: flex; align-items: center;">
+                <input type="checkbox" class="form-check-input" id="check${i}">
             </div>
+            
             <div class="item-info">
               <span class="item-name">${item.name}</span>
               <span class="item-price">$${item.price}</span>
-              ${memoHtml} </div>
-            <div>
-                <div class="qty-group">
+              ${memoHtml}
+            </div>
+            
+            <div class="qty-group">
                 <button class="qty-btn" onclick="updateQty(${i}, -1)">-</button>
                 <span class="qty-num" id="qty${i}">1</span>
                 <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
-                </div>
             </div>
           </div>
+          
           <input type="text" class="note-input" placeholder="${placeholderText}" id="note${i}">
         `;
         container.appendChild(div);
@@ -231,7 +258,7 @@
     async function submitOrder() {
       const submitBtn = document.getElementById('submitBtn');
       submitBtn.disabled = true;
-      submitBtn.innerText = "正在傳送訂單...";
+      submitBtn.innerText = "傳送中...";
       submitBtn.style.opacity = "0.7";
 
       try {
@@ -247,7 +274,7 @@
         });
 
         if (orders.length === 0) {
-          alert("請先勾選您要點的餐點喔！");
+          alert("請先勾選餐點！");
           submitBtn.disabled = false;
           submitBtn.innerText = "送出訂單";
           submitBtn.style.opacity = "1";
@@ -273,13 +300,12 @@
 
         await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
         
-        // 成功後的視覺回饋
-        submitBtn.innerText = "✅ 點餐成功！";
-        submitBtn.style.backgroundColor = "#4CD9B0";
+        submitBtn.innerText = "✅ 成功！";
+        submitBtn.style.backgroundColor = "#4CD9B0"; 
         setTimeout(() => { liff.closeWindow(); }, 1000);
 
       } catch (err) {
-        alert("❌ 錯誤：" + err.message);
+        alert("錯誤：" + err.message);
         submitBtn.disabled = false;
         submitBtn.innerText = "送出訂單";
         submitBtn.style.opacity = "1";
@@ -287,9 +313,9 @@
     }
 
     async function cancelMyOrder() {
-        if(!confirm("確定要取消您在這家店的所有訂單嗎？")) return;
+        if(!confirm("確定要取消訂單嗎？")) return;
         const btn = document.getElementById('cancelBtn');
-        btn.innerText = "正在取消...";
+        btn.innerText = "處理中...";
         btn.disabled = true;
 
         try {
@@ -301,10 +327,10 @@
                 storeName: storeNameParam
             };
             await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
-            alert("🗑️ 已取消訂單！");
+            alert("已取消訂單");
             liff.closeWindow();
         } catch (e) {
-             alert("取消失敗，請稍後再試");
+             alert("取消失敗");
              btn.innerText = "🗑️ 取消我在這家店的訂單";
              btn.disabled = false;
         }
