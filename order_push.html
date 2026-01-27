@@ -3,56 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>點餐選單(II)</title>
+  <title>點餐選單(III)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
     body { background-color: #f4f7f6; padding: 10px; font-family: sans-serif; }
-    
     .item-card { 
-      background: white; 
-      border-radius: 12px; 
-      padding: 12px; 
-      margin-bottom: 12px; 
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+      background: white; border-radius: 12px; padding: 12px; 
+      margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
     }
-
-    /* 第一列佈局 */
     .row-top { display: flex; align-items: center; margin-bottom: 8px; }
-
     .item-info { flex-grow: 1; padding-left: 10px; }
-    
     .item-name { font-weight: bold; font-size: 16px; }
     .item-price { color: #28a745; font-size: 14px; margin-left: 8px; }
-
     .qty-group { 
-      display: flex; align-items: center; 
-      background: #f8f9fa; border-radius: 20px; padding: 2px 8px; 
+      display: flex; align-items: center; background: #f8f9fa; 
+      border-radius: 20px; padding: 2px 8px; 
     }
     .qty-btn { 
       width: 28px; height: 28px; border-radius: 50%; border: none;
       background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
       font-weight: bold; color: #00B900;
     }
-
     .note-input {
-      width: 100%;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
-      background-color: #fafafa;
+      width: 100%; border: 1px solid #eee; border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; background-color: #fafafa;
     }
     .note-input:focus { border-color: #00B900; outline: none; background: #fff; }
-
-    .submit-btn { background-color: #00B900; color: white; border-radius: 50px; font-weight: bold; padding: 15px; border: none; }
+    .submit-btn { 
+      background-color: #00B900; color: white; border-radius: 50px; 
+      font-weight: bold; padding: 15px; border: none; 
+    }
   </style>
 </head>
 <body>
   <div class="container p-0">
     <div id="welcomeMsg" class="text-center mb-2 text-secondary small"></div>
+    
     <h4 id="storeTitle" class="text-center fw-bold mb-3">🍱 載入中...</h4>
+    
     <div id="menuContainer"></div>
-    <div id="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+    
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-success"></div>
+    </div>
+    
     <button id="submitBtn" class="btn submit-btn w-100 mt-2 shadow" onclick="submitOrder()" style="display:none;">送出訂單</button>
     <button id="cancelBtn" class="btn btn-outline-danger w-100 mt-3 border-0" onclick="cancelMyOrder()" style="display:none;">🗑️ 取消我在這家店的訂單</button>
   </div>
@@ -68,18 +62,13 @@
 
     let currentMenu = []; 
 
-    // ================= 初始化 =================
     async function init() {
       try {
         await liff.init({ liffId: LIFF_ID });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
+        if (!liff.isLoggedIn()) { liff.login(); return; }
 
         const profile = await liff.getProfile();
-        // 修正: 這裡現在能找到 welcomeMsg 了
+        // 確保元素存在後再賦值
         const welcomeEl = document.getElementById('welcomeMsg');
         if(welcomeEl) welcomeEl.innerText = `Hi, ${profile.displayName}`;
 
@@ -88,12 +77,9 @@
           loadMenu(storeNameParam);
         } else {
           document.getElementById('loading').style.display = 'none';
-          document.getElementById('storeTitle').innerText = "❌ 網址參數錯誤";
           alert("找不到店家名稱，請從 LINE 重新點擊按鈕。");
         }
-
       } catch (err) {
-        console.error('LIFF Error', err);
         alert('初始化失敗：' + err.message);
       }
     }
@@ -106,44 +92,53 @@
         renderMenu(data);
       } catch (e) {
         document.getElementById('loading').style.display = 'none';
-        alert("讀取菜單失敗，請檢查網路或稍後再試。");
+        alert("讀取菜單失敗。");
       }
     }
 
+    // 🚀 回復您要求的菜單顯示方式
     function renderMenu(items) {
-      // 修正: HTML ID 已經改為 menuContainer，這裡可以正常運作了
       const container = document.getElementById('menuContainer');
       container.innerHTML = "";
       
-      if (items.length === 0) {
-          container.innerHTML = "<p class='text-center text-muted'>暫無菜單資料</p>";
-      }
-
-      items.forEach((item, index) => {
+      items.forEach((item, i) => {
         const div = document.createElement('div');
-        div.className = "card mb-2 shadow-sm";
+        div.className = "item-card";
         div.innerHTML = `
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title mb-0">${item.name}</h5>
-              <small class="text-muted">$${item.price}</small>
+          <div class="row-top">
+            <input type="checkbox" class="form-check-input" id="check${i}" style="transform: scale(1.3);">
+            <div class="item-info">
+              <span class="item-name">${item.name}</span>
+              <span class="item-price">$${item.price}</span>
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <input type="number" class="form-control" id="qty-${index}" value="0" min="0" style="width: 60px;">
-              <input type="text" class="form-control" id="note-${index}" placeholder="備註" style="width: 80px; font-size: 12px;">
+            <div class="qty-group">
+              <button class="qty-btn" onclick="updateQty(${i}, -1)">-</button>
+              <span class="mx-2 fw-bold" id="qty${i}">1</span>
+              <button class="qty-btn" onclick="updateQty(${i}, 1)">+</button>
             </div>
           </div>
+          <input type="text" class="note-input" placeholder="有什麼特殊要求嗎？" id="note${i}">
         `;
         container.appendChild(div);
       });
 
-      // 修正 3: 載入完成後，隱藏轉圈圈，顯示按鈕
       document.getElementById('loading').style.display = 'none';
       document.getElementById('submitBtn').style.display = 'block';
       document.getElementById('cancelBtn').style.display = 'block';
     }
 
-    // ================= 送出訂單 =================
+    // 更新數量的加減邏輯
+    function updateQty(index, delta) {
+      const qtySpan = document.getElementById(`qty${index}`);
+      const checkbox = document.getElementById(`check${index}`);
+      let currentQty = parseInt(qtySpan.innerText);
+      currentQty += delta;
+      if (currentQty < 1) currentQty = 1;
+      qtySpan.innerText = currentQty;
+      // 點擊加減時自動勾選
+      if (delta > 0) checkbox.checked = true;
+    }
+
     async function submitOrder() {
       const submitBtn = document.getElementById('submitBtn');
       submitBtn.disabled = true;
@@ -151,26 +146,18 @@
 
       try {
         let orders = [];
-        let totalQty = 0;
-        
-        currentMenu.forEach((item, index) => {
-          const qtyInput = document.getElementById(`qty-${index}`);
-          const noteInput = document.getElementById(`note-${index}`);
-          const qty = parseInt(qtyInput.value);
+        currentMenu.forEach((item, i) => {
+          const isChecked = document.getElementById(`check${i}`).checked;
+          const qty = parseInt(document.getElementById(`qty${i}`).innerText);
+          const note = document.getElementById(`note${i}`).value;
           
-          if (qty > 0) {
-            orders.push({
-              item: item.name,
-              price: item.price,
-              qty: qty,
-              note: noteInput.value
-            });
-            totalQty += qty;
+          if (isChecked) {
+            orders.push({ item: item.name, price: item.price, qty: qty, note: note });
           }
         });
 
-        if (totalQty === 0) {
-          alert("您還沒選擇任何餐點喔！");
+        if (orders.length === 0) {
+          alert("請先勾選您要點的餐點喔！");
           submitBtn.disabled = false;
           submitBtn.innerText = "送出訂單";
           return;
@@ -178,15 +165,11 @@
 
         const profile = await liff.getProfile();
         const context = liff.getContext();
-
-        let finalTargetId = targetIdFromUrl;
         
+        // 優先使用從 GAS 傳來的 targetId (群組 ID)
+        let finalTargetId = targetIdFromUrl;
         if (!finalTargetId) {
-           if (context && (context.type === 'group' || context.type === 'room')) {
-               finalTargetId = context.groupId || context.roomId;
-           } else {
-               finalTargetId = profile.userId;
-           }
+           finalTargetId = (context && (context.groupId || context.roomId)) || profile.userId;
         }
 
         const payload = {
@@ -198,62 +181,27 @@
           orders: orders
         };
 
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-
+        await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
         alert("✅ 點餐成功！");
         liff.closeWindow();
-
       } catch (err) {
-        alert("❌ 發生錯誤：" + err.message);
+        alert("❌ 錯誤：" + err.message);
         submitBtn.disabled = false;
-        submitBtn.innerText = "送出訂單";
       }
     }
 
-    // 修正 4: 補上取消訂單的函式
     async function cancelMyOrder() {
-        if(!confirm("確定要取消您在這家店的所有訂單嗎？")) return;
-        
-        const btn = document.getElementById('cancelBtn');
-        btn.disabled = true;
-        btn.innerText = "取消中...";
-
-        try {
-            const profile = await liff.getProfile();
-            const context = liff.getContext();
-            
-            let finalTargetId = targetIdFromUrl;
-            if (!finalTargetId) {
-                if (context && (context.type === 'group' || context.type === 'room')) {
-                    finalTargetId = context.groupId || context.roomId;
-                } else {
-                    finalTargetId = profile.userId; 
-                }
-            }
-
-            const payload = {
-                action: "cancel_order",
-                targetId: finalTargetId,
-                userId: profile.userId,
-                storeName: storeNameParam
-            };
-
-            await fetch(GAS_API_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-
-            alert("🗑️ 已送出取消請求！");
-            liff.closeWindow();
-
-        } catch (err) {
-            alert("❌ 取消失敗：" + err.message);
-            btn.disabled = false;
-            btn.innerText = "🗑️ 取消我在這家店的訂單";
-        }
+        if(!confirm("確定要取消訂單嗎？")) return;
+        const profile = await liff.getProfile();
+        const payload = {
+            action: "cancel_order",
+            targetId: targetIdFromUrl || profile.userId,
+            userId: profile.userId,
+            storeName: storeNameParam
+        };
+        await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
+        alert("🗑️ 已取消訂單！");
+        liff.closeWindow();
     }
     
     init();
