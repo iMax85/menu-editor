@@ -300,8 +300,31 @@
 
         await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
         
+        /*submitBtn.innerText = "✅ 成功！";
+        submitBtn.style.backgroundColor = "#4CD9B0"; 
+        setTimeout(() => { liff.closeWindow(); }, 1000); */
+        // 🚀 省錢關鍵：改用 LIFF 幫使用者發送訊息到群組 (免費!)
+        if (liff.isInClient()) {
+            // 組裝要發送的訊息
+            const orderDetails = orders.map(o => {
+                const noteText = o.note ? `(${o.note})` : "";
+                return `${o.item} ${noteText} $${o.price} x${o.qty}`;
+            }).join('\n');
+
+            const msgText = `✅ 我點好囉！\n${orderDetails}`;
+
+            try {
+                await liff.sendMessages([{ type: 'text', text: msgText }]);
+            } catch (error) {
+                // 如果是在外部瀏覽器開啟，sendMessages 會失敗，這裡可以忽略或改用 alert
+                console.log("LIFF sendMessages failed (maybe external browser)");
+            }
+        }
+
         submitBtn.innerText = "✅ 成功！";
         submitBtn.style.backgroundColor = "#4CD9B0"; 
+        
+        // 稍微延遲關閉，讓使用者看到成功訊息
         setTimeout(() => { liff.closeWindow(); }, 1000);
 
       } catch (err) {
